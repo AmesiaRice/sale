@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { Reveal } from "@/components/motion/Reveal";
+import Button from "./Button";
 
 const container = {
   hidden: {},
@@ -67,7 +68,7 @@ export default function HomeHero({ stats = [], grainCards = [] }) {
             className="text-white text-sm font-semibold px-7 py-3 rounded-md transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg"
             style={{ backgroundColor: "var(--color-gold-500)" }}
           >
-            Browse SKU Catalogue →
+            Product Catalogue →
           </Link>
         </motion.div>
       </motion.div>
@@ -102,11 +103,13 @@ export default function HomeHero({ stats = [], grainCards = [] }) {
                   {card.description}
                 </p>
                 <p
-                  className="mt-2 text-sm font-semibold"
+                  className="mt-2 text-sm font-semibold mb-5"
                   style={{ color: "var(--color-gold-500)" }}
                 >
                   {card.tagline}
                 </p>
+
+                <Button href="/products">{card.title} →</Button>
               </div>
             </div>
           </Reveal>

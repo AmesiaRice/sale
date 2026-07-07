@@ -211,7 +211,7 @@ export default function ContactSection() {
 
           <input
             type="text"
-            placeholder="Phone / Email"
+            placeholder=" Enter Ph No."
             value={form.contact}
             onChange={(e) =>
               setForm({ ...form, contact: e.target.value })

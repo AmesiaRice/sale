@@ -1,35 +1,50 @@
-// Replace your Next.js API route with this version.
-// Google Apps Script Web Apps often return a redirect.
-// fetch() must follow redirects and read the response as text first.
+// app/api/order/route.js
+// Forwards orders to Google Apps Script Web App.
+// Apps Script may return a 302 redirect — fetch follows it automatically.
 
 import { NextResponse } from "next/server";
 
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbyI4FVJajBVm-569UTLjy0I12kjXKHUF69u_UYEdKVGm-r1cFYo4yL3eKH2qGv7lFCzew/exec";
+  "https://script.google.com/macros/s/AKfycbxkYhtd6sLpedCu-cyAQOd-GAKxJWavK7KWRevoR2T1u8ThFqEfzq4r8_jd0ipkA_MaMA/exec";
+
+// Apps Script can be slow on cold start — give it room.
+export const maxDuration = 30; // seconds (Vercel)
 
 export async function POST(req) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s
+
   try {
     const body = await req.json();
+    console.log("Order batch received:", Array.isArray(body) ? body.length : 1);
 
-    console.log("Order Body:", body);
+    // Normalize to array for batch sending
+    const orderData = Array.isArray(body) ? body : [body];
 
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
-      redirect: "follow", // Important for Apps Script
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8", // Best compatibility
-      },
-      body: JSON.stringify({
-        sheetName: "Orders",
-        data: body,
-      }),
+      redirect: "follow",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sheetName: "Orders", data: orderData }),
+      signal: controller.signal,
       cache: "no-store",
     });
 
-    // Apps Script may not always return proper JSON headers,
-    // so read as text first.
+    clearTimeout(timeoutId);
+
     const text = await response.text();
-    console.log("Apps Script Response:", text);
+
+    if (!response.ok) {
+      console.error("Apps Script HTTP error:", response.status, text);
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Apps Script responded with status ${response.status}`,
+          raw: text,
+        },
+        { status: 502 }
+      );
+    }
 
     let result;
     try {
@@ -37,21 +52,25 @@ export async function POST(req) {
     } catch {
       result = {
         success: false,
-        message: "Invalid response from Google Apps Script",
+        message: "Invalid (non-JSON) response from Apps Script",
         raw: text,
       };
     }
 
     return NextResponse.json(result);
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error("Order API Error:", error);
 
+    const isAbort = error?.name === "AbortError";
     return NextResponse.json(
       {
         success: false,
-        message: error.message,
+        message: isAbort
+          ? "Request to Apps Script timed out"
+          : error.message || "Request failed",
       },
-      { status: 500 }
+      { status: isAbort ? 504 : 500 }
     );
   }
 }

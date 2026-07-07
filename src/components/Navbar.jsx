@@ -77,7 +77,6 @@ export default function Navbar() {
             }`}
             style={{
               color: "var(--color-gold-400)",
-              opacity: label === "Products" ? 1 : 0.6,
             }}
           >
             <span>{label}</span>

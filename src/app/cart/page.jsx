@@ -73,9 +73,9 @@ export default function CartPage() {
     });
   };
 
-  const discount = subtotal > 5000 ? subtotal * 0.1 : 0;
+  const discount = 0;
 
-  const shipping = subtotal > 3000 ? 0 : 0;
+  const shipping = 0;
 
   const total = subtotal - discount + shipping;
 
@@ -105,54 +105,49 @@ export default function CartPage() {
   }, []);
 
   const handleCheckout = async () => {
-    const orderId = `ORD-${retailerId}-${Date.now()}`;
     if (!cartItems.length) {
       alert("Your cart is empty.");
       return;
     }
-
     if (!retailerId) {
       alert("Retailer ID not found. Please log in again.");
       return;
     }
-
+  
+    const orderId = `ORD-${retailerId}-${Date.now()}`;
     setLoading(true);
-
+  
     try {
-      // const orderSummary = `Subtotal: ₹${subtotal}, Discount: ₹${discount}, Shipping: ${shipping === 0 ? "Free" : `₹${shipping}`}, Total: ₹${total}`;
-
-      for (const item of cartItems) {
-        const res = await fetch("/api/order", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId,
-            retailerId,
-            skuName: item.name,           // or item.skuCode
-            quantity: item.quantity,
-            rate: item.dealerPrice,
-            // remarks: `${orderSummary} | SKU: ${item.skuCode || ""} | Grade: ${item.grade || ""}`,
-            createdAt: new Date().toISOString(),
-            // Optional extras (only if your sheet/script has these columns):
-            // skuId: item.skuId,
-            // skuCode: item.skuCode,
-            // source: "cart",
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok || data.success === false) {
-          throw new Error(data.message || "Failed to submit order");
-        }
+      // Build ONE payload with every cart item
+      const payload = cartItems.map((item) => ({
+        orderId,
+        retailerId,
+        skuName: item.name,
+        skuCode: item.skuCode || "",
+        grade: item.grade || "",
+        packSize: item.packSizes || "",
+        quantity: item.quantity,
+        rate: item.dealerPrice,
+        amount: Number(item.dealerPrice || 0) * item.quantity,
+        createdAt: new Date().toISOString(),
+      }));
+  
+      const res = await fetch("/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload), // <-- array = batch
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || "Failed to submit order");
       }
-
+  
       alert("Order submitted successfully!");
-
-      // Clear cart — add clearCart to CartContext (see below)
       clearCart();
-
     } catch (error) {
+      console.error(error);
       alert(error.message || "Something went wrong");
     } finally {
       setLoading(false);
@@ -477,7 +472,7 @@ export default function CartPage() {
                           {item.quantity > 1 && ` · Qty ${item.quantity}`}
                         </p>
                       </div>
-
+                      
                       <span className="font-medium shrink-0">
                         ₹{Number(item.dealerPrice || 0)}
                       </span>

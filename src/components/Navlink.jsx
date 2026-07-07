@@ -22,7 +22,7 @@ const Navlink = ({
         ${className}
         ${
           isActive
-            ? "opacity-100"
+            ? "opacity-100 font-black scale-[1.02]"
             : "opacity-70 hover:opacity-100"
         }
       `}
