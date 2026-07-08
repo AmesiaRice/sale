@@ -9,7 +9,7 @@ export default function OrderForm() {
     skuName: "",
     quantity: 1,
     rate: "",
-    remarks: "",
+    skuId: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -289,11 +289,11 @@ export default function OrderForm() {
             </label>
 
             <textarea
-              name="remarks"
-              value={form.remarks}
+              name="skuId"
+              value={form.skuId}
               onChange={handleChange}
               rows="4"
-              placeholder="Optional remarks"
+              placeholder="skuId"
               className="
                 w-full
                 border

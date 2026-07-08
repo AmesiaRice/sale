@@ -20,7 +20,7 @@ export default function Home() {
     },
     {
       id: "lp",
-      title: "LP — Lot Purchase",
+      title: "LP — Loose Purchase",
       subtitle: "लॉट में खरीदारी",
       description:
         "LP matlab Lot Purchase — ek hi lot mein alag-alag SKU ya variant select karke bulk mein order dena. Retailers aur dealers jo ek saath zyada maatra mein stock lena chahte hain, unke liye yeh system aasan aur clear hai.",

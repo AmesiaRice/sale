@@ -109,7 +109,7 @@ export default function HomeHero({ stats = [], grainCards = [] }) {
                   {card.tagline}
                 </p>
 
-                <Button href="/products">{card.title} →</Button>
+                <Button href="/products">Product Page →</Button>
               </div>
             </div>
           </Reveal>

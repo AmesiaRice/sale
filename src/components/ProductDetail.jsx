@@ -31,8 +31,8 @@ export default function ProductDetail({
         </div>
 
         {/* Spec Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map((item) => (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((item) => (
             <div
               key={item}
               className="
@@ -82,7 +82,7 @@ export default function ProductDetail({
       grade: variant.grade,
       packSizes: variant.packSizes,
       mrp: variant.mrp,
-      dealerPrice: variant.dealerPrice,
+      dealerPrice: Math.round(variant.dealerPrice),
       moq: variant.moq,
       offer: variant.offer,
       inStock: variant.inStock,
@@ -95,16 +95,21 @@ export default function ProductDetail({
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
+
+  // 👇 Retailer ke liye sabse relevant 6 fields
   const specs = [
-    { label: "USP", value: variant.grainLength },
-    { label: "Packing Type", value: variant.moisture },
-    { label: "Primary Use", value: variant.primaryUse },
-    { label: "Pack Sizes", value: variant.packSizes },
-    { label: "MRP", value: variant.mrp },
-    { label: "Dealer Price", value: variant.dealerPrice },
-    { label: "MOQ (QTL)", value: variant.moq },
-    { label: "Offer", value: variant.offer || "N/A" },
-    
+    { label: "MRP", value: variant.mrp != null ? `₹${variant.mrp}` : "N/A" },
+    { label: "Pack Size", value: variant.packSizes },
+    { label: "Dealer Price/ Bag", value: variant.dealerPrice != null ? `₹${Math.round(variant.dealerPrice)}` : "N/A" },
+    { label: "Consumer Price/ Bag", value: variant.consumerPriceBag != null ? `₹${variant.consumerPriceBag}` : "N/A" },
+    {
+      label: "Your Margin/Bag",
+      value:
+        variant.consumerPriceBag != null && variant.dealerPrice != null
+          ? `₹${(variant.consumerPriceBag - variant.dealerPrice).toFixed(2)}`
+          : "N/A",
+    },
+    { label: "Rate / KG", value: variant.dealerPricePerKg != null ? `₹${variant.dealerPricePerKg.toFixed(2)}` : "N/A" },
   ];
   
 
@@ -202,7 +207,7 @@ export default function ProductDetail({
       </div>
 
       {/* Spec cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
         {specs.map(({ label, value }) => (
           <div
             key={label}

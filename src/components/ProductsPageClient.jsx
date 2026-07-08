@@ -221,25 +221,25 @@ export default function ProductsPageClient() {
             "
           >
             <AnimatePresence mode="wait">
-  <motion.div
-    key={`${activeSkuId}-${activeVariantId}`}
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2 }}
-  >
-            <ProductDetail
-              key={activeVariantId}
-              skuLine={activeSku}
-              variant={activeVariant}
-              onVariantSelect={
-                handleVariantSelect
-              }
-              loading={variantLoading}
-            />
+              <motion.div
+                key={`${activeSkuId}-${activeVariantId}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ProductDetail
+                  key={activeVariantId}
+                  skuLine={activeSku}
+                  variant={activeVariant}
+                  onVariantSelect={
+                    handleVariantSelect
+                  }
+                  loading={variantLoading}
+                />
 
-</motion.div>
-</AnimatePresence>
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>
