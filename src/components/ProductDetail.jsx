@@ -108,7 +108,7 @@ export default function ProductDetail({
       grade: variant.grade,
       packSizes: variant.packSizes,
       mrp: variant.mrp,
-      dealerPrice: Math.round(pricing.finalPrice),
+      dealerPrice: pricing.finalPrice.toFixed(2),
       quantity: quantity,
       appliedDiscount: pricing.discountPerBag,
       appliedType: pricing.appliedType,
@@ -128,7 +128,7 @@ export default function ProductDetail({
   const specs = [
     { label: "MRP", value: variant.mrp != null ? `₹${variant.mrp}` : "N/A" },
     { label: "Pack Size", value: variant.packSizes },
-    { label: "Dealer Price/ Bag", value: variant.dealerPrice != null ? `₹${Math.round(variant.dealerPrice)}` : "N/A" },
+    { label: "Dealer Price/ Bag", value: variant.dealerPrice != null ? `₹${(variant.dealerPrice).toFixed(2)}` : "N/A" },
     { label: "Consumer Price/ Bag", value: variant.consumerPriceBag != null ? `₹${variant.consumerPriceBag}` : "N/A" },
     {
       label: "Your Margin/Bag",
@@ -297,11 +297,11 @@ export default function ProductDetail({
             <p className="flex items-center gap-2">
               {pricing.discountPerBag > 0 && (
                 <span className="text-xs sm:text-sm line-through text-gray-400">
-                  ₹{Math.round(pricing.basePrice)}
+                  ₹{(pricing.basePrice).toFixed(2)}
                 </span>
               )}
               <span className="text-lg sm:text-xl font-bold" style={{ color: "var(--color-gold-900)" }}>
-                ₹{Math.round(pricing.finalPrice)}
+                ₹{(pricing.finalPrice).toFixed(2)}
               </span>
             </p>
           </div>

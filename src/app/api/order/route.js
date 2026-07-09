@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 
 const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxkYhtd6sLpedCu-cyAQOd-GAKxJWavK7KWRevoR2T1u8ThFqEfzq4r8_jd0ipkA_MaMA/exec";
+  "https://script.google.com/macros/s/AKfycbxxuGDJGJ_uds4vtOkF9O-eqHSS7KwIDFKi1R6pIqJp8waHt6rxEqif2PGhark0jpQpjQ/exec";
 
 // Apps Script can be slow on cold start — give it room.
 export const maxDuration = 30; // seconds (Vercel)

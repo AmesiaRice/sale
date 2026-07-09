@@ -3,10 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { getSkuLines, calculateBestPrice, isLiveFiroOffer } from "@/data/skus";
-import Select from "react-select";
+import dynamic from "next/dynamic";
 import { useSkuData } from "../hooks/useSkuData";
-
-
 
 import {
   ShoppingBag,
@@ -22,8 +20,9 @@ import {
 
 import { useCart } from "@/app/context/CartContext";
 
-export default function CartPage() {
+const Select = dynamic(() => import("react-select"), { ssr: false });
 
+export default function CartPage() {
   const { skuLines } = useSkuData();
 
   const {
@@ -31,34 +30,20 @@ export default function CartPage() {
     removeFromCart,
     increaseQty,
     decreaseQty,
+    updateQuantity,
     clearCart,
     addToCart,
   } = useCart();
 
   const [retailerId, setRetailerId] = useState("");
   const [loading, setLoading] = useState(false);
-  // const [products, setProducts] = useState([]);
   const [selectedSku, setSelectedSku] = useState("");
-  
 
   const products = useMemo(
-  () => skuLines.flatMap((line) => line.variants || []),
-  [skuLines]
-);
+    () => skuLines.flatMap((line) => line.variants || []),
+    [skuLines]
+  );
 
-  // useEffect(() => {
-  //   async function loadProducts() {
-  //     const skuLines = await getSkuLines();
-  //     const allProducts = skuLines.flatMap((line) => line.variants || []);
-  //     setProducts(allProducts);
-  //   }
-
-  //   loadProducts();
-  // }, []);
-
-  // ================= Live pricing per cart item =================
-  // Har cart item ke against full product (volumeTiers/firoOffers ke sath) match karke
-  // uski current quantity ke hisaab se best price nikalta hai.
   const pricedItems = useMemo(() => {
     return cartItems.map((item) => {
       const fullProduct = products.find(
@@ -66,7 +51,6 @@ export default function CartPage() {
       );
 
       if (!fullProduct) {
-        // Fallback: agar product list abhi load nahi hui, purani price use karo
         return {
           ...item,
           basePrice: Number(item.dealerPrice || 0),
@@ -79,7 +63,6 @@ export default function CartPage() {
 
       const pricing = calculateBestPrice(fullProduct, item.quantity);
 
-      // Next volume tier hint (agar aur qty badhane se zyada discount mile)
       let nextTier = null;
       if (Array.isArray(fullProduct.volumeTiers)) {
         const upcoming = fullProduct.volumeTiers
@@ -93,13 +76,15 @@ export default function CartPage() {
         basePrice: pricing.basePrice,
         finalPrice: pricing.finalPrice,
         discountPerBag: pricing.discountPerBag,
+        volumeDiscount: pricing.volumeDiscount,
+        firoDiscount: pricing.firoDiscount,
         appliedType: pricing.appliedType,
+        activeFiro: pricing.activeFiro,
         nextTier,
       };
     });
   }, [cartItems, products]);
 
-  // Pricing calculations (ab discount-adjusted price se)
   const subtotal = pricedItems.reduce(
     (total, item) => total + item.basePrice * item.quantity,
     0
@@ -115,14 +100,9 @@ export default function CartPage() {
 
   const handleSkuSelect = (id) => {
     setSelectedSku(id);
-
     const product = products.find((p) => p.id === id);
-
     if (!product) return;
-
-    addToCart({
-      ...product,
-    });
+    addToCart({ ...product });
   };
 
   useEffect(() => {
@@ -130,18 +110,14 @@ export default function CartPage() {
       try {
         const res = await fetch("/api/session");
         const data = await res.json();
-
         if (data.success) {
           const user = data.user;
-          setRetailerId(
-            user.retailerId || user.retailerID || user.id || ""
-          );
+          setRetailerId(user.retailerId || user.retailerID || user.id || "");
         }
       } catch (error) {
         console.error("Failed to load session");
       }
     }
-
     loadSession();
   }, []);
 
@@ -159,7 +135,10 @@ export default function CartPage() {
     setLoading(true);
 
     try {
-      // Discount-adjusted final price checkout mein bhejo
+      // Poore order ka grand total (ye already CartPage mein calculate ho chuka hai)
+      const grandTotal = Math.round(total);
+      const totalItemsCount = pricedItems.reduce((sum, item) => sum + item.quantity, 0);
+
       const payload = pricedItems.map((item) => ({
         orderId,
         retailerId,
@@ -168,10 +147,12 @@ export default function CartPage() {
         grade: item.grade || "",
         packSize: item.packSizes || "",
         quantity: item.quantity,
-        rate: Math.round(item.finalPrice),
+        rate: item.finalPrice,           // per-bag rate (isi item ka)
         discountPerBag: item.discountPerBag,
         discountType: item.appliedType,
-        amount: Math.round(item.finalPrice) * item.quantity,
+        amount: item.finalPrice * item.quantity, // isi item ka total
+        orderTotal: grandTotal,        // 👈 NAYA — poore order ka combined total, har row mein
+        orderTotalItems: totalItemsCount, // 👈 NAYA — poore order mein total bags
         createdAt: new Date().toISOString(),
       }));
 
@@ -200,21 +181,15 @@ export default function CartPage() {
   return (
     <div
       className="min-h-screen px-4 py-6 sm:px-6 lg:px-8"
-      style={{
-        background: "linear-gradient(to bottom, #fffdf8, #f8f4ea)",
-      }}
+      style={{ background: "linear-gradient(to bottom, #fffdf8, #f8f4ea)" }}
     >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1
-              className="text-3xl sm:text-4xl font-bold"
-              style={{ color: "var(--color-gold-800)" }}
-            >
+            <h1 className="text-3xl sm:text-4xl font-bold" style={{ color: "var(--color-gold-800)" }}>
               Shopping Cart
             </h1>
-
             <p className="text-gray-500 mt-2 text-sm sm:text-base">
               Review your selected products before placing the order.
             </p>
@@ -225,7 +200,6 @@ export default function CartPage() {
             style={{ borderColor: "var(--color-gold-200)" }}
           >
             <ShoppingBag size={20} style={{ color: "var(--color-gold-500)" }} />
-
             <div>
               <p className="text-xs text-gray-500">Total Items</p>
               <p className="font-bold text-lg" style={{ color: "var(--color-gold-700)" }}>
@@ -239,9 +213,7 @@ export default function CartPage() {
         {totalDiscount > 0 && (
           <div
             className="mb-6 rounded-2xl px-5 py-4 flex items-center gap-3 text-white"
-            style={{
-              background: "linear-gradient(90deg, #166534, #16a34a)",
-            }}
+            style={{ background: "linear-gradient(90deg, #166534, #16a34a)" }}
           >
             <Tag size={22} />
             <p className="text-sm sm:text-base font-semibold">
@@ -261,11 +233,10 @@ export default function CartPage() {
             value={
               products.find((p) => p.id === selectedSku)
                 ? {
-                    value: selectedSku,
-                    label: `${products.find((p) => p.id === selectedSku).name} (${
-                      products.find((p) => p.id === selectedSku).skuCode
+                  value: selectedSku,
+                  label: `${products.find((p) => p.id === selectedSku).name} (${products.find((p) => p.id === selectedSku).skuCode
                     })`,
-                  }
+                }
                 : null
             }
             onChange={(option) => handleSkuSelect(option.value)}
@@ -299,9 +270,24 @@ export default function CartPage() {
               {pricedItems.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-3xl border shadow-sm p-5 sm:p-6 transition-all duration-300 hover:shadow-lg"
+                  className="bg-white rounded-3xl border shadow-sm p-5 sm:p-6 transition-all duration-300 hover:shadow-lg overflow-hidden"
                   style={{ borderColor: "var(--color-gold-200)" }}
                 >
+                  {/* 🔥 Bada FIRO banner — jab FIRO discount lag raha ho */}
+                  {item.firoDiscount > 0 && (
+                    <div
+                      className="-m-5 sm:-m-6 mb-4 sm:mb-5 px-5 sm:px-6 py-3 flex items-center gap-3 text-white"
+                      style={{
+                        background: "linear-gradient(90deg, #dc2626, #ea580c)",
+                      }}
+                    >
+                      <Flame size={20} className="shrink-0 animate-pulse" />
+                      <p className="text-sm sm:text-base font-bold">
+                        FIRO Flash Discount Active! Extra ₹{item.firoDiscount}/bag off applied 🔥
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex flex-col lg:flex-row gap-5 lg:items-center lg:justify-between">
                     {/* Product */}
                     <div className="flex gap-4 items-start">
@@ -313,10 +299,7 @@ export default function CartPage() {
                       </div>
 
                       <div>
-                        <h2
-                          className="text-lg sm:text-xl font-bold"
-                          style={{ color: "var(--color-gold-800)" }}
-                        >
+                        <h2 className="text-lg sm:text-xl font-bold" style={{ color: "var(--color-gold-800)" }}>
                           {item.name}
                         </h2>
 
@@ -334,23 +317,14 @@ export default function CartPage() {
                             In Stock
                           </span>
 
-                          {/* Applied discount badge */}
-                          {item.discountPerBag > 0 && (
+                          {/* Volume badge (chhota) */}
+                          {item.volumeDiscount > 0 && (
                             <span
                               className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
-                              style={{
-                                backgroundColor:
-                                  item.appliedType === "FIRO" ? "#fef2f2" : "#eff6ff",
-                                color:
-                                  item.appliedType === "FIRO" ? "#dc2626" : "#1d4ed8",
-                              }}
+                              style={{ backgroundColor: "#eff6ff", color: "#1d4ed8" }}
                             >
-                              {item.appliedType === "FIRO" ? (
-                                <Flame size={12} />
-                              ) : (
-                                <PackageCheck size={12} />
-                              )}
-                              ₹{item.discountPerBag}/bag OFF
+                              <PackageCheck size={12} />
+                              Volume: ₹{item.volumeDiscount}/bag
                             </span>
                           )}
                         </div>
@@ -370,15 +344,12 @@ export default function CartPage() {
                       <div className="text-left sm:text-center lg:text-right">
                         {item.discountPerBag > 0 && (
                           <p className="text-sm text-gray-400 line-through">
-                            ₹{Math.round(item.basePrice) * item.quantity}
+                            ₹{Math.round(item.basePrice * item.quantity).toLocaleString("en-IN")}
                           </p>
                         )}
 
-                        <h3
-                          className="text-2xl font-bold"
-                          style={{ color: "var(--color-gold-700)" }}
-                        >
-                          ₹{Math.round(item.finalPrice) * item.quantity}
+                        <h3 className="text-2xl font-bold" style={{ color: "var(--color-gold-700)" }}>
+                          ₹{Math.round(item.finalPrice * item.quantity).toLocaleString("en-IN")}
                         </h3>
 
                         <p className="text-xs text-green-600 mt-1">{item.skuId}</p>
@@ -391,25 +362,34 @@ export default function CartPage() {
                       </div>
 
                       <div className="flex items-center gap-3 flex-wrap">
-                        {/* Quantity */}
+                        {/* Quantity — ab manual input ke sath */}
                         <div
                           className="flex items-center rounded-2xl border overflow-hidden"
                           style={{ borderColor: "var(--color-gold-200)" }}
                         >
                           <button
                             onClick={() => decreaseQty(item.id)}
-                            className="w-11 h-11 flex items-center justify-center hover:bg-gray-50 transition"
+                            className="w-11 h-11 flex items-center justify-center hover:bg-gray-50 transition shrink-0"
                           >
                             <Minus size={16} />
                           </button>
 
-                          <div className="w-12 text-center font-semibold">
-                            {item.quantity}
-                          </div>
+                          <input
+                            type="number"
+                            min={1}
+                            value={item.quantity}
+                            onChange={(e) => updateQuantity(item.id, e.target.value)}
+                            onBlur={(e) => {
+                              if (!e.target.value || Number(e.target.value) < 1) {
+                                updateQuantity(item.id, 1);
+                              }
+                            }}
+                            className="w-16 text-center font-semibold outline-none no-spinner"
+                          />
 
                           <button
                             onClick={() => increaseQty(item.id)}
-                            className="w-11 h-11 flex items-center justify-center hover:bg-gray-50 transition"
+                            className="w-11 h-11 flex items-center justify-center hover:bg-gray-50 transition shrink-0"
                           >
                             <Plus size={16} />
                           </button>
@@ -436,10 +416,7 @@ export default function CartPage() {
                 className="bg-white rounded-3xl border shadow-sm p-6 sticky top-24"
                 style={{ borderColor: "var(--color-gold-200)" }}
               >
-                <h2
-                  className="text-2xl font-bold mb-6"
-                  style={{ color: "var(--color-gold-800)" }}
-                >
+                <h2 className="text-2xl font-bold mb-6" style={{ color: "var(--color-gold-800)" }}>
                   Order Summary
                 </h2>
 
@@ -453,15 +430,11 @@ export default function CartPage() {
                   />
                 </div>
 
-                {/* SKU breakdown */}
                 <div className="mb-6 space-y-3">
                   <p className="text-sm font-medium text-gray-700">Items</p>
 
                   {pricedItems.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      className="flex items-start justify-between gap-3 text-sm"
-                    >
+                    <motion.div key={item.id} className="flex items-start justify-between gap-3 text-sm">
                       <div className="min-w-0">
                         <p className="font-medium text-gray-800 truncate">{item.name}</p>
                         <p className="text-xs text-gray-500">
@@ -475,14 +448,11 @@ export default function CartPage() {
                         )}
                       </div>
 
-                      <span className="font-medium shrink-0">
-                        ₹{Math.round(item.finalPrice)}
-                      </span>
+                      <span className="font-medium shrink-0">₹{(item.finalPrice).toFixed(2)}</span>
                     </motion.div>
                   ))}
                 </div>
 
-                {/* Pricing */}
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-500">Subtotal</span>
@@ -503,14 +473,12 @@ export default function CartPage() {
                     style={{ borderColor: "var(--color-gold-200)" }}
                   >
                     <span className="text-lg font-bold">Total</span>
-
                     <span className="text-2xl font-bold" style={{ color: "var(--color-gold-700)" }}>
                       ₹{Math.round(total).toLocaleString("en-IN")}
                     </span>
                   </div>
                 </div>
 
-                {/* Checkout */}
                 <button
                   className="w-full mt-6 py-4 rounded-2xl text-white font-semibold text-base transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
                   style={{ backgroundColor: "var(--color-gold-500)" }}
@@ -520,7 +488,6 @@ export default function CartPage() {
                   {loading ? "Submitting..." : "Proceed To Checkout"}
                 </button>
 
-                {/* Features */}
                 <div className="mt-6 space-y-4">
                   <div className="flex items-center gap-3 text-sm text-gray-600">
                     <Truck size={18} />
