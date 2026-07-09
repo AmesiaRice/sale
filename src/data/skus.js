@@ -216,7 +216,6 @@ async function fetchVolumeDiscounts() {
     const rawData = await res.json();
     if (!Array.isArray(rawData)) return {};
 
-    // Sirf "Active" status wale rows use karo
     const activeRows = rawData.filter(
       (row) => row["Active Status"] === "Active"
     );
@@ -264,7 +263,7 @@ async function fetchFiroOffers() {
   try {
     const res = await fetch(FIRO_DISCOUNT_API_URL, {
       method: "GET",
-      next: { revalidate: 30 }, // FIRO time-sensitive hai, chhota revalidate rakha
+      next: { revalidate: 30 },
     });
 
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
@@ -272,7 +271,6 @@ async function fetchFiroOffers() {
     const rawData = await res.json();
     if (!Array.isArray(rawData)) return {};
 
-    // Sirf "Active" status wale rows use karo (final live/expired check time se hoga)
     const activeRows = rawData.filter((row) => row["Status"] === "Active");
 
     return groupFiroOffers(activeRows);
@@ -295,13 +293,15 @@ export function isLiveFiroOffer(offer) {
 /**
  * Diye gaye quantity ke liye best applicable price nikalta hai:
  * - Normal dealer price se start
- * - Sabse best matching volume discount tier apply karta hai
- * - Agar koi live FIRO offer bhi qty ke liye eligible hai aur usse zyada benefit deta hai, wo use hota hai
- * (Volume aur FIRO ek sath stack nahi hote — jo zyada benefit de, wahi apply hota hai)
+ * - Volume discount tier apply hota hai (base discount)
+ * - Agar koi live FIRO offer bhi qty ke liye eligible hai, to wo Volume ke
+ *   UPAR STACK hoga (extra discount) — Volume ke bina FIRO nahi hatega,
+ *   dono ek sath add hote hain.
  */
 export function calculateBestPrice(variant, quantity) {
   const basePrice = variant.dealerPrice || 0;
 
+  // Best Volume tier dhoondenge (jo bhi highest applicable ho)
   let volumeBenefit = 0;
   if (Array.isArray(variant.volumeTiers)) {
     variant.volumeTiers.forEach((tier) => {
@@ -311,6 +311,7 @@ export function calculateBestPrice(variant, quantity) {
     });
   }
 
+  // Best live FIRO offer dhoondenge
   let firoBenefit = 0;
   let activeFiro = null;
   if (Array.isArray(variant.firoOffers)) {
@@ -326,14 +327,25 @@ export function calculateBestPrice(variant, quantity) {
     });
   }
 
-  const bestBenefit = Math.max(volumeBenefit, firoBenefit);
-  const appliedType = firoBenefit > volumeBenefit ? "FIRO" : bestBenefit > 0 ? "Volume" : "None";
+  // Dono stack — Volume base hai, FIRO uske upar extra
+  const totalDiscount = volumeBenefit + firoBenefit;
+
+  let appliedType = "None";
+  if (volumeBenefit > 0 && firoBenefit > 0) {
+    appliedType = "Volume + FIRO";
+  } else if (firoBenefit > 0) {
+    appliedType = "FIRO";
+  } else if (volumeBenefit > 0) {
+    appliedType = "Volume";
+  }
 
   return {
     basePrice,
-    discountPerBag: bestBenefit,
-    finalPrice: basePrice - bestBenefit,
-    appliedType, // "FIRO" | "Volume" | "None"
+    volumeDiscount: volumeBenefit, // alag se breakdown ke liye
+    firoDiscount: firoBenefit,     // alag se breakdown ke liye
+    discountPerBag: totalDiscount, // total combined discount
+    finalPrice: basePrice - totalDiscount,
+    appliedType, // "Volume + FIRO" | "FIRO" | "Volume" | "None"
     activeFiro,  // agar FIRO applied hua to uska poora object
   };
 }

@@ -14,7 +14,28 @@ export default function ProductDetail({
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
 
-  // Skeleton Loader
+  // ✅ Saare hooks yahin, top par, kisi bhi return se pehle
+
+  const liveFiroOffers = useMemo(() => {
+    const offers = [];
+    (skuLine?.variants || []).forEach((v) => {
+      (v.firoOffers || []).forEach((offer) => {
+        if (isLiveFiroOffer(offer)) {
+          offers.push({ ...offer, variantName: v.name, variantId: v.id });
+        }
+      });
+    });
+    return offers;
+  }, [skuLine]);
+
+  const pricing = useMemo(() => {
+    if (!variant) {
+      return { basePrice: 0, finalPrice: 0, discountPerBag: 0, appliedType: "None" };
+    }
+    return calculateBestPrice(variant, quantity);
+  }, [variant, quantity]);
+
+  // Skeleton Loader — ab safe hai, kyunki upar sab hooks already call ho chuke hain
   if (loading || !variant) {
     return (
       <div className="p-4 sm:p-5 md:p-6 flex flex-col gap-5 animate-pulse">
@@ -74,25 +95,6 @@ export default function ProductDetail({
     );
   }
 
-  // ================= Live discount collection (marquee ke liye) =================
-  const liveFiroOffers = useMemo(() => {
-    const offers = [];
-    (skuLine.variants || []).forEach((v) => {
-      (v.firoOffers || []).forEach((offer) => {
-        if (isLiveFiroOffer(offer)) {
-          offers.push({ ...offer, variantName: v.name, variantId: v.id });
-        }
-      });
-    });
-    return offers;
-  }, [skuLine]);
-
-  // ================= Quantity-based live pricing =================
-  const pricing = useMemo(
-    () => calculateBestPrice(variant, quantity),
-    [variant, quantity]
-  );
-
   const handleQtyChange = (delta) => {
     setQuantity((prev) => Math.max(1, prev + delta));
   };
@@ -123,7 +125,6 @@ export default function ProductDetail({
     setTimeout(() => setAdded(false), 1500);
   };
 
-  // 👇 Retailer ke liye sabse relevant 6 fields
   const specs = [
     { label: "MRP", value: variant.mrp != null ? `₹${variant.mrp}` : "N/A" },
     { label: "Pack Size", value: variant.packSizes },
@@ -147,13 +148,12 @@ export default function ProductDetail({
         animation: "fadeIn 0.3s ease-in-out",
       }}
     >
-      {/* ================= Scrollable Live Discount Banner ================= */}
+      {/* Scrollable Live Discount Banner */}
       {liveFiroOffers.length > 0 && (
         <div
           className="relative overflow-hidden rounded-xl"
           style={{
-            background:
-              "linear-gradient(90deg, #b91c1c, #ea580c, #b91c1c)",
+            background: "linear-gradient(90deg, #b91c1c, #ea580c, #b91c1c)",
           }}
         >
           <div className="marquee-track flex items-center gap-8 py-2.5 whitespace-nowrap">
@@ -173,12 +173,8 @@ export default function ProductDetail({
               animation: marquee-scroll 22s linear infinite;
             }
             @keyframes marquee-scroll {
-              0% {
-                transform: translateX(0);
-              }
-              100% {
-                transform: translateX(-50%);
-              }
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
             }
           `}</style>
         </div>
@@ -190,12 +186,7 @@ export default function ProductDetail({
         style={{ color: "var(--color-gold-400)" }}
       >
         Products › {skuLine.name} ›{" "}
-        <span
-          style={{
-            color: "var(--color-gold-500)",
-            fontWeight: 600,
-          }}
-        >
+        <span style={{ color: "var(--color-gold-500)", fontWeight: 600 }}>
           {variant.name}
         </span>
       </p>
@@ -205,47 +196,22 @@ export default function ProductDetail({
         <div className="min-w-0">
           <h2
             className="text-xl sm:text-2xl md:text-3xl font-semibold break-words"
-            style={{
-              fontFamily: "var(--font-display)",
-              color: "var(--color-gold-900)",
-            }}
+            style={{ fontFamily: "var(--font-display)", color: "var(--color-gold-900)" }}
           >
             {variant.name}
           </h2>
 
           <p className="text-[10px] sm:text-xs mt-1 leading-relaxed break-words font-black text-orange-600">
             SKU Code: {variant.skuCode}
-
-            <span className="hidden sm:inline">
-              {" "}
-              &nbsp;|&nbsp; {variant.grade}
-            </span>
-
-            <span className="sm:hidden block mt-1">
-              Grade: {variant.grade}
-            </span>
+            <span className="hidden sm:inline"> &nbsp;|&nbsp; {variant.grade}</span>
+            <span className="sm:hidden block mt-1">Grade: {variant.grade}</span>
           </p>
         </div>
 
         <button
           onClick={handleAdd}
-          className="
-            w-full
-            sm:w-auto
-            text-white
-            text-sm
-            font-semibold
-            px-5
-            py-3
-            rounded-xl
-            transition-all
-            duration-300
-            hover:scale-[1.02]
-            active:scale-[0.98]
-          "
-          style={{
-            backgroundColor: "var(--color-gold-500)",
-          }}
+          className="w-full sm:w-auto text-white text-sm font-semibold px-5 py-3 rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+          style={{ backgroundColor: "var(--color-gold-500)" }}
         >
           {added ? "✓ Added" : "Add To Cart"}
         </button>
@@ -266,35 +232,15 @@ export default function ProductDetail({
         {specs.map(({ label, value }) => (
           <div
             key={label}
-            className="
-              rounded-lg
-              p-3
-              sm:p-4
-              text-center
-              border
-              min-h-[90px]
-              flex
-              flex-col
-              justify-center
-            "
-            style={{
-              backgroundColor: "var(--color-gold-100)",
-              borderColor: "var(--color-gold-200)",
-            }}
+            className="rounded-lg p-3 sm:p-4 text-center border min-h-[90px] flex flex-col justify-center"
+            style={{ backgroundColor: "var(--color-gold-100)", borderColor: "var(--color-gold-200)" }}
           >
-            <p
-              className="text-[10px] sm:text-xs mb-1"
-              style={{ color: "var(--color-gold-400)" }}
-            >
+            <p className="text-[10px] sm:text-xs mb-1" style={{ color: "var(--color-gold-400)" }}>
               {label}
             </p>
-
             <p
               className="text-sm sm:text-base md:text-lg font-semibold break-words"
-              style={{
-                fontFamily: "var(--font-display)",
-                color: "var(--color-gold-900)",
-              }}
+              style={{ fontFamily: "var(--font-display)", color: "var(--color-gold-900)" }}
             >
               {value}
             </p>
@@ -302,19 +248,13 @@ export default function ProductDetail({
         ))}
       </div>
 
-      {/* ================= Quantity Selector + Live Price ================= */}
+      {/* Quantity Selector + Live Price */}
       <div
         className="rounded-xl border p-4 flex flex-col gap-3"
-        style={{
-          backgroundColor: "var(--color-gold-50)",
-          borderColor: "var(--color-gold-200)",
-        }}
+        style={{ backgroundColor: "var(--color-gold-50)", borderColor: "var(--color-gold-200)" }}
       >
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <p
-            className="text-xs sm:text-sm font-semibold"
-            style={{ color: "var(--color-gold-900)" }}
-          >
+          <p className="text-xs sm:text-sm font-semibold" style={{ color: "var(--color-gold-900)" }}>
             Select Quantity (Bags)
           </p>
 
@@ -322,10 +262,7 @@ export default function ProductDetail({
             <button
               onClick={() => handleQtyChange(-1)}
               className="w-8 h-8 rounded-md font-bold text-sm"
-              style={{
-                backgroundColor: "var(--color-gold-200)",
-                color: "var(--color-gold-900)",
-              }}
+              style={{ backgroundColor: "var(--color-gold-200)", color: "var(--color-gold-900)" }}
             >
               −
             </button>
@@ -334,9 +271,7 @@ export default function ProductDetail({
               type="number"
               min={1}
               value={quantity}
-              onChange={(e) =>
-                setQuantity(Math.max(1, Number(e.target.value) || 1))
-              }
+              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
               className="w-16 text-center rounded-md border py-1.5 text-sm font-semibold"
               style={{ borderColor: "var(--color-gold-300)" }}
             />
@@ -344,18 +279,17 @@ export default function ProductDetail({
             <button
               onClick={() => handleQtyChange(1)}
               className="w-8 h-8 rounded-md font-bold text-sm"
-              style={{
-                backgroundColor: "var(--color-gold-200)",
-                color: "var(--color-gold-900)",
-              }}
+              style={{ backgroundColor: "var(--color-gold-200)", color: "var(--color-gold-900)" }}
             >
               +
             </button>
           </div>
         </div>
 
-        {/* Live price breakdown */}
-        <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t" style={{ borderColor: "var(--color-gold-200)" }}>
+        <div
+          className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t"
+          style={{ borderColor: "var(--color-gold-200)" }}
+        >
           <div>
             <p className="text-[10px] sm:text-xs" style={{ color: "var(--color-gold-400)" }}>
               Price per Bag
@@ -366,10 +300,7 @@ export default function ProductDetail({
                   ₹{Math.round(pricing.basePrice)}
                 </span>
               )}
-              <span
-                className="text-lg sm:text-xl font-bold"
-                style={{ color: "var(--color-gold-900)" }}
-              >
+              <span className="text-lg sm:text-xl font-bold" style={{ color: "var(--color-gold-900)" }}>
                 ₹{Math.round(pricing.finalPrice)}
               </span>
             </p>
@@ -379,13 +310,11 @@ export default function ProductDetail({
             <span
               className="text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-md"
               style={{
-                backgroundColor:
-                  pricing.appliedType === "FIRO" ? "#fef2f2" : "#f0fdf4",
+                backgroundColor: pricing.appliedType === "FIRO" ? "#fef2f2" : "#f0fdf4",
                 color: pricing.appliedType === "FIRO" ? "#dc2626" : "#166534",
               }}
             >
-              {pricing.appliedType === "FIRO" ? "🔥 FIRO Flash" : "📦 Volume"}{" "}
-              Discount: ₹{pricing.discountPerBag}/bag OFF
+              {pricing.appliedType === "FIRO" ? "🔥 FIRO Flash" : "📦 Volume"} Discount: ₹{pricing.discountPerBag}/bag OFF
             </span>
           )}
 
@@ -393,22 +322,15 @@ export default function ProductDetail({
             <p className="text-[10px] sm:text-xs" style={{ color: "var(--color-gold-400)" }}>
               Total ({quantity} bags)
             </p>
-            <p
-              className="text-base sm:text-lg font-bold"
-              style={{ color: "var(--color-gold-900)" }}
-            >
+            <p className="text-base sm:text-lg font-bold" style={{ color: "var(--color-gold-900)" }}>
               ₹{Math.round(pricing.finalPrice * quantity).toLocaleString("en-IN")}
             </p>
           </div>
         </div>
 
-        {/* Next tier hint */}
         {Array.isArray(variant.volumeTiers) &&
           variant.volumeTiers.some((t) => t.minQty > quantity) && (
-            <p
-              className="text-[10px] sm:text-xs pt-1"
-              style={{ color: "var(--color-gold-500)" }}
-            >
+            <p className="text-[10px] sm:text-xs pt-1" style={{ color: "var(--color-gold-500)" }}>
               💡{" "}
               {(() => {
                 const nextTier = variant.volumeTiers
@@ -423,25 +345,16 @@ export default function ProductDetail({
       {/* Description */}
       <div
         className="px-3 sm:px-4 py-3 rounded-r-md"
-        style={{
-          backgroundColor: "var(--color-gold-50)",
-          borderLeft: "4px solid var(--color-gold-500)",
-        }}
+        style={{ backgroundColor: "var(--color-gold-50)", borderLeft: "4px solid var(--color-gold-500)" }}
       >
-        <p
-          className="text-sm sm:text-[15px] leading-relaxed"
-          style={{ color: "var(--color-gold-700)" }}
-        >
+        <p className="text-sm sm:text-[15px] leading-relaxed" style={{ color: "var(--color-gold-700)" }}>
           {variant.description}
         </p>
       </div>
 
       {/* Sub-variant switcher */}
       <div>
-        <p
-          className="text-[10px] sm:text-[11px] tracking-widest font-semibold mb-3"
-          style={{ color: "var(--color-gold-400)" }}
-        >
+        <p className="text-[10px] sm:text-[11px] tracking-widest font-semibold mb-3" style={{ color: "var(--color-gold-400)" }}>
           SWITCH SUB-VARIANT
         </p>
 
@@ -450,31 +363,11 @@ export default function ProductDetail({
             <button
               key={v.id}
               onClick={() => onVariantSelect(v.id)}
-              className="
-                px-3
-                sm:px-4
-                py-2
-                rounded-md
-                text-xs
-                sm:text-sm
-                font-medium
-                transition-all
-                duration-200
-                break-words
-                max-w-full
-              "
+              className="px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 break-words max-w-full"
               style={{
-                backgroundColor:
-                  v.id === variant.id
-                    ? "var(--color-gold-500)"
-                    : "var(--color-gold-100)",
-
+                backgroundColor: v.id === variant.id ? "var(--color-gold-500)" : "var(--color-gold-100)",
                 color: v.id === variant.id ? "#fff" : "var(--color-gold-700)",
-
-                border:
-                  v.id === variant.id
-                    ? "none"
-                    : "1px solid var(--color-gold-200)",
+                border: v.id === variant.id ? "none" : "1px solid var(--color-gold-200)",
               }}
             >
               {v.name}
