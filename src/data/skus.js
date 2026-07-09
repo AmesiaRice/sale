@@ -1,5 +1,13 @@
 // ================= API URLs =================
 
+// Volume Discount ki Apps Script API
+const VOLUME_DISCOUNT_API_URL =
+  "https://script.google.com/macros/s/AKfycbzaH1ytviDdRK809w9mkOwONc3W-l71V1r_kGnu1WafOBNNIq00FLfmg5XNrjDZMUW5nw/exec";
+
+// FIRO (Flash) Discount API
+const FIRO_DISCOUNT_API_URL =
+  "https://script.google.com/macros/s/AKfycbx1umqO_4WiPxTTVv3OXcxSLUZFqo6d8MubR2Um_tTuJS8tP_LvHQzxYPw9rCPknvSLkA/exec";
+
 // LP + CP dono ki nayi API (raw/flat format, SKU ID prefix se "LP-" / "CP-" pehchana jayega)
 const LP_CP_API_URL =
   "";
@@ -7,22 +15,6 @@ const LP_CP_API_URL =
 // LS (Lot Sale) ki API — raw/flat format
 const LOT_API_URL =
   "https://script.google.com/macros/s/AKfycbwbEwNR8sT9rELWPco3WFFwpEFl-Xg7EuKZ1NSEfoHmZKYRCzQY12-nhzj6khrXQOweRg/exec";
-
-  // {
-    // "SKU ID": "Lot-0009 | AMASIA | UTTAM | BHOG | 30 KG",
-    // "SKu Name": "AMASIA | UTTAM | BHOG | WAND | 30 KG",
-    // "Unit": "30 KG",
-    // "Unit per Cartoon / Bag": 1,
-    // "C*D": 30,
-    // "MRP Per Cartoon / Bag": 4899,
-    // "Consumer Discount": 0.2,
-    // "Dealer Discount": 0.2,
-    // "Consumer Price / Bag": 3919.2,
-    // "Delaer Price / Bag": 3135.3599999999997,
-    // "MRP / Kg": 163.3,
-    // "Consumer Price / Kg": 130.64,
-    // "Dealer Price / KG": 104.51199999999999
-  // }
 
 export const skuLines = []; // fallback
 
@@ -83,6 +75,10 @@ function mapRowToVariant(row, { series, packagingType, channelCategory, skuStatu
     mrpPerKg: row["MRP / Kg"] ?? null,
     consumerPricePerKg: row["Consumer Price / Kg"] ?? null,
     dealerPricePerKg: row["Dealer Price / KG"] ?? null,
+
+    // 👇 Discount data yahan attach hoga (getSkuLines mein set hoga)
+    volumeTiers: [],
+    firoOffers: [],
   };
 }
 
@@ -178,10 +174,173 @@ function transformLotSaleData(rawRows) {
   };
 }
 
-// ================= Fetchers =================
+// ================= Volume Discount Helpers =================
+
+/**
+ * Raw volume discount rows ko SKU ID ke basis par group karta hai,
+ * har SKU ke tiers ko Min Qty ke hisaab se ascending sort karta hai.
+ */
+function groupVolumeDiscounts(rawRows) {
+  const map = {};
+
+  rawRows.forEach((row) => {
+    const skuId = row["SKU ID"];
+    if (!skuId) return;
+
+    if (!map[skuId]) map[skuId] = [];
+
+    map[skuId].push({
+      minQty: Number(row["Minimum Order Qty"]) || 0,
+      benefitPerBag: Number(row["Volume Benefit ₹/Bag"]) || 0,
+    });
+  });
+
+  Object.keys(map).forEach((skuId) => {
+    map[skuId].sort((a, b) => a.minQty - b.minQty);
+  });
+
+  return map;
+}
+
+async function fetchVolumeDiscounts() {
+  if (!VOLUME_DISCOUNT_API_URL) return {};
+
+  try {
+    const res = await fetch(VOLUME_DISCOUNT_API_URL, {
+      method: "GET",
+      next: { revalidate: 30 },
+    });
+
+    if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+
+    const rawData = await res.json();
+    if (!Array.isArray(rawData)) return {};
+
+    // Sirf "Active" status wale rows use karo
+    const activeRows = rawData.filter(
+      (row) => row["Active Status"] === "Active"
+    );
+
+    return groupVolumeDiscounts(activeRows);
+  } catch (error) {
+    console.error("Failed to fetch Volume Discounts:", error);
+    return {};
+  }
+}
+
+// ================= FIRO (Flash) Discount Helpers =================
+
+/**
+ * Raw FIRO rows ko SKU ID ke basis par group karta hai.
+ * Live/expired ka check UI-render time par hoga (isLiveFiroOffer function se).
+ */
+function groupFiroOffers(rawRows) {
+  const map = {};
+
+  rawRows.forEach((row) => {
+    const skuId = row["SKU ID"];
+    if (!skuId) return;
+
+    if (!map[skuId]) map[skuId] = [];
+
+    map[skuId].push({
+      firoId: row["FIRO ID"],
+      firoName: row["FIRO Name"],
+      startDateTime: row["Offer Start DateTime"],
+      endDateTime: row["Offer End DateTime"],
+      minQty: Number(row["Minimum Order Qty"]) || 0,
+      benefitPerBag: Number(row["FIRO Benefit ₹/Bag"]) || 0,
+      approvalRequired: row["Approval Required?"] === "Yes",
+      remarks: row["Remarks"] || "",
+    });
+  });
+
+  return map;
+}
+
+async function fetchFiroOffers() {
+  if (!FIRO_DISCOUNT_API_URL) return {};
+
+  try {
+    const res = await fetch(FIRO_DISCOUNT_API_URL, {
+      method: "GET",
+      next: { revalidate: 30 }, // FIRO time-sensitive hai, chhota revalidate rakha
+    });
+
+    if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+
+    const rawData = await res.json();
+    if (!Array.isArray(rawData)) return {};
+
+    // Sirf "Active" status wale rows use karo (final live/expired check time se hoga)
+    const activeRows = rawData.filter((row) => row["Status"] === "Active");
+
+    return groupFiroOffers(activeRows);
+  } catch (error) {
+    console.error("Failed to fetch FIRO offers:", error);
+    return {};
+  }
+}
+
+/**
+ * Check karta hai ki ek FIRO offer abhi (current time) live hai ya nahi.
+ */
+export function isLiveFiroOffer(offer) {
+  const now = new Date();
+  const start = new Date(offer.startDateTime);
+  const end = new Date(offer.endDateTime);
+  return now >= start && now <= end;
+}
+
+/**
+ * Diye gaye quantity ke liye best applicable price nikalta hai:
+ * - Normal dealer price se start
+ * - Sabse best matching volume discount tier apply karta hai
+ * - Agar koi live FIRO offer bhi qty ke liye eligible hai aur usse zyada benefit deta hai, wo use hota hai
+ * (Volume aur FIRO ek sath stack nahi hote — jo zyada benefit de, wahi apply hota hai)
+ */
+export function calculateBestPrice(variant, quantity) {
+  const basePrice = variant.dealerPrice || 0;
+
+  let volumeBenefit = 0;
+  if (Array.isArray(variant.volumeTiers)) {
+    variant.volumeTiers.forEach((tier) => {
+      if (quantity >= tier.minQty && tier.benefitPerBag > volumeBenefit) {
+        volumeBenefit = tier.benefitPerBag;
+      }
+    });
+  }
+
+  let firoBenefit = 0;
+  let activeFiro = null;
+  if (Array.isArray(variant.firoOffers)) {
+    variant.firoOffers.forEach((offer) => {
+      if (
+        isLiveFiroOffer(offer) &&
+        quantity >= offer.minQty &&
+        offer.benefitPerBag > firoBenefit
+      ) {
+        firoBenefit = offer.benefitPerBag;
+        activeFiro = offer;
+      }
+    });
+  }
+
+  const bestBenefit = Math.max(volumeBenefit, firoBenefit);
+  const appliedType = firoBenefit > volumeBenefit ? "FIRO" : bestBenefit > 0 ? "Volume" : "None";
+
+  return {
+    basePrice,
+    discountPerBag: bestBenefit,
+    finalPrice: basePrice - bestBenefit,
+    appliedType, // "FIRO" | "Volume" | "None"
+    activeFiro,  // agar FIRO applied hua to uska poora object
+  };
+}
+
+// ================= Fetchers (LP/CP/LS) =================
 
 async function fetchLpCpData() {
-  // Agar API URL abhi set nahi hai, to fetch hi skip kar do
   if (!LP_CP_API_URL) {
     console.warn("LP+CP API URL abhi set nahi hai — LP/CP data skip ho raha hai.");
     return [];
@@ -228,9 +387,11 @@ async function fetchLotSaleData() {
 
 export async function getSkuLines() {
   try {
-    const [lpCpGroups, lotSaleGroup] = await Promise.all([
+    const [lpCpGroups, lotSaleGroup, volumeDiscounts, firoOffers] = await Promise.all([
       fetchLpCpData(),
       fetchLotSaleData(),
+      fetchVolumeDiscounts(),
+      fetchFiroOffers(),
     ]);
 
     const combined = [...lpCpGroups];
@@ -238,6 +399,14 @@ export async function getSkuLines() {
     if (lotSaleGroup) {
       combined.push(lotSaleGroup);
     }
+
+    // Har variant ke andar uske volume tiers aur FIRO offers attach karo (SKU ID se match)
+    combined.forEach((group) => {
+      group.variants.forEach((variant) => {
+        variant.volumeTiers = volumeDiscounts[variant.skuId] || [];
+        variant.firoOffers = firoOffers[variant.skuId] || [];
+      });
+    });
 
     return combined;
   } catch (error) {

@@ -4,6 +4,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import Footer from "@/components/Footer";
 import { CartProvider } from "@/app/context/CartContext";
 import { Playfair_Display, DM_Sans } from "next/font/google";
+import SWRProvider from "@/components/SWRProvider"; // 👈 alag file se import
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -13,13 +14,13 @@ const playfair = Playfair_Display({
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-body",
-}); 
+});
 
 export const metadata = {
   title: "Saifco Basmati Rice — SKU Catalogue",
   description:
     "Manufacturer, Exporter & Supplier of Premium Basmati Rice. Browse Uttam, Golden, Silver, and Premium SKU lines.",
-    icons: {
+  icons: {
     icon: "/saifco logo.webp",
     shortcut: "/saifco logo.webp",
     apple: "/saifco logo.webp",
@@ -29,11 +30,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${playfair.variable} ${dmSans.variable}`}>
-       <body className="min-h-screen flex flex-col font-[family-name:var(--font-body)]">
+      <body className="min-h-screen flex flex-col font-[family-name:var(--font-body)]">
         <CartProvider>
           <Navbar />
           <div className="flex flex-col flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
-            {children}
+            <SWRProvider>{children}</SWRProvider>
           </div>
           <Footer />
           <MobileBottomNav />

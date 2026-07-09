@@ -1,59 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSkuLines } from "@/data/skus";
+import { useSkuData } from "../app/hooks/useSkuData";
 import Sidebar from "@/components/Sidebar";
 import ProductDetail from "@/components/ProductDetail";
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion } from "motion/react";
 
 export default function ProductsPageClient() {
-  const [skuLines, setSkuLines] = useState([]);
-  const [activeSkuId, setActiveSkuId] = useState(null);
-  const [activeVariantId, setActiveVariantId] =
-    useState(null);
+  const { skuLines, isLoading: loading } = useSkuData();
 
-  // Main loading
-  const [loading, setLoading] = useState(true);
+  const [activeSkuId, setActiveSkuId] = useState(null);
+  const [activeVariantId, setActiveVariantId] = useState(null);
 
   // Variant switching loading
-  const [variantLoading, setVariantLoading] =
-    useState(false);
+  const [variantLoading, setVariantLoading] = useState(false);
 
-  // Fetch data from API
+  // Jab bhi skuLines pehli baar load ho (ya cache se aa jaye),
+  // default active SKU/variant set karo — sirf tab jab abhi tak kuch select nahi hua
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-
-        const data = await getSkuLines();
-
-        if (
-          Array.isArray(data) &&
-          data.length > 0
-        ) {
-          setSkuLines(data);
-
-          setActiveSkuId(data[0].id);
-
-          setActiveVariantId(
-            data[0].variants?.[0]?.id || null
-          );
-        }
-      } catch (error) {
-        console.error(
-          "Failed to load SKU data:",
-          error
-        );
-      } finally {
-        setLoading(false);
-      }
+    if (Array.isArray(skuLines) && skuLines.length > 0 && !activeSkuId) {
+      setActiveSkuId(skuLines[0].id);
+      setActiveVariantId(skuLines[0].variants?.[0]?.id || null);
     }
-
-    loadData();
-  }, []);
+  }, [skuLines, activeSkuId]);
 
   // Initial Skeleton Screen
-  if (loading) {
+  if (loading && skuLines.length === 0) {
     return (
       <div
         className="
@@ -76,17 +48,13 @@ export default function ProductsPageClient() {
             gap-3
           "
           style={{
-            backgroundColor:
-              "var(--color-gold-800)",
+            backgroundColor: "var(--color-gold-800)",
           }}
         >
           <div className="h-4 w-24 rounded bg-white/20" />
 
           {[1, 2, 3, 4, 5].map((item) => (
-            <div
-              key={item}
-              className="h-12 rounded-xl bg-white/10"
-            />
+            <div key={item} className="h-12 rounded-xl bg-white/10" />
           ))}
         </div>
 
@@ -120,16 +88,12 @@ export default function ProductsPageClient() {
   }
 
   // Active SKU
-  const activeSku =
-    skuLines.find(
-      (s) => s.id === activeSkuId
-    ) || skuLines[0];
+  const activeSku = skuLines.find((s) => s.id === activeSkuId) || skuLines[0];
 
   // Active Variant
   const activeVariant =
-    activeSku?.variants?.find(
-      (v) => v.id === activeVariantId
-    ) || activeSku?.variants?.[0];
+    activeSku?.variants?.find((v) => v.id === activeVariantId) ||
+    activeSku?.variants?.[0];
 
   // SKU Change
   const handleSkuSelect = (skuId) => {
@@ -138,14 +102,10 @@ export default function ProductsPageClient() {
     setTimeout(() => {
       setActiveSkuId(skuId);
 
-      const sku = skuLines.find(
-        (s) => s.id === skuId
-      );
+      const sku = skuLines.find((s) => s.id === skuId);
 
       if (sku?.variants?.length) {
-        setActiveVariantId(
-          sku.variants[0].id
-        );
+        setActiveVariantId(sku.variants[0].id);
       } else {
         setActiveVariantId(null);
       }
@@ -200,9 +160,7 @@ export default function ProductsPageClient() {
           activeSkuId={activeSkuId}
           activeVariantId={activeVariantId}
           onSkuSelect={handleSkuSelect}
-          onVariantSelect={
-            handleVariantSelect
-          }
+          onVariantSelect={handleVariantSelect}
         />
 
         {/* Product Content */}
@@ -232,12 +190,9 @@ export default function ProductsPageClient() {
                   key={activeVariantId}
                   skuLine={activeSku}
                   variant={activeVariant}
-                  onVariantSelect={
-                    handleVariantSelect
-                  }
+                  onVariantSelect={handleVariantSelect}
                   loading={variantLoading}
                 />
-
               </motion.div>
             </AnimatePresence>
           </div>
