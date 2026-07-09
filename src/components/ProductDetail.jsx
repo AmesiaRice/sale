@@ -14,8 +14,6 @@ export default function ProductDetail({
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
 
-  // ✅ Saare hooks yahin, top par, kisi bhi return se pehle
-
   const liveFiroOffers = useMemo(() => {
     const offers = [];
     (skuLine?.variants || []).forEach((v) => {
@@ -30,64 +28,51 @@ export default function ProductDetail({
 
   const pricing = useMemo(() => {
     if (!variant) {
-      return { basePrice: 0, finalPrice: 0, discountPerBag: 0, appliedType: "None" };
+      return {
+        basePrice: 0,
+        finalPrice: 0,
+        discountPerBag: 0,
+        volumeDiscount: 0,
+        firoDiscount: 0,
+        appliedType: "None",
+      };
     }
     return calculateBestPrice(variant, quantity);
   }, [variant, quantity]);
 
-  // Skeleton Loader — ab safe hai, kyunki upar sab hooks already call ho chuke hain
   if (loading || !variant) {
     return (
       <div className="p-4 sm:p-5 md:p-6 flex flex-col gap-5 animate-pulse">
-        {/* Breadcrumb */}
         <div className="h-3 w-40 rounded bg-gray-200" />
 
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
           <div className="flex-1">
             <div className="h-8 w-52 rounded bg-gray-200 mb-3" />
             <div className="h-3 w-36 rounded bg-gray-200" />
           </div>
-
           <div className="h-8 w-28 rounded-full bg-gray-200" />
         </div>
 
-        {/* Spec Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {[1, 2, 3, 4, 5, 6].map((item) => (
-            <div
-              key={item}
-              className="
-                rounded-xl
-                border
-                p-4
-                min-h-[90px]
-                bg-gray-100
-              "
-            >
+            <div key={item} className="rounded-xl border p-4 min-h-[90px] bg-gray-100">
               <div className="h-3 w-16 mx-auto rounded bg-gray-200 mb-3" />
               <div className="h-5 w-24 mx-auto rounded bg-gray-300" />
             </div>
           ))}
         </div>
 
-        {/* Description */}
         <div className="rounded-xl bg-gray-100 p-4 space-y-3">
           <div className="h-3 w-full rounded bg-gray-200" />
           <div className="h-3 w-[90%] rounded bg-gray-200" />
           <div className="h-3 w-[80%] rounded bg-gray-200" />
         </div>
 
-        {/* Variant Buttons */}
         <div>
           <div className="h-3 w-32 rounded bg-gray-200 mb-4" />
-
           <div className="flex flex-wrap gap-2">
             {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className="h-10 w-28 rounded-lg bg-gray-200"
-              />
+              <div key={item} className="h-10 w-28 rounded-lg bg-gray-200" />
             ))}
           </div>
         </div>
@@ -143,18 +128,13 @@ export default function ProductDetail({
   return (
     <div
       className="p-4 sm:p-5 md:p-6 flex flex-col gap-4 sm:gap-5"
-      style={{
-        backgroundColor: "#fff",
-        animation: "fadeIn 0.3s ease-in-out",
-      }}
+      style={{ backgroundColor: "#fff", animation: "fadeIn 0.3s ease-in-out" }}
     >
       {/* Scrollable Live Discount Banner */}
       {liveFiroOffers.length > 0 && (
         <div
           className="relative overflow-hidden rounded-xl"
-          style={{
-            background: "linear-gradient(90deg, #b91c1c, #ea580c, #b91c1c)",
-          }}
+          style={{ background: "linear-gradient(90deg, #b91c1c, #ea580c, #b91c1c)" }}
         >
           <div className="marquee-track flex items-center gap-8 py-2.5 whitespace-nowrap">
             {[...liveFiroOffers, ...liveFiroOffers].map((offer, idx) => (
@@ -181,14 +161,9 @@ export default function ProductDetail({
       )}
 
       {/* Breadcrumb */}
-      <p
-        className="text-[10px] sm:text-xs break-words leading-relaxed"
-        style={{ color: "var(--color-gold-400)" }}
-      >
+      <p className="text-[10px] sm:text-xs break-words leading-relaxed" style={{ color: "var(--color-gold-400)" }}>
         Products › {skuLine.name} ›{" "}
-        <span style={{ color: "var(--color-gold-500)", fontWeight: 600 }}>
-          {variant.name}
-        </span>
+        <span style={{ color: "var(--color-gold-500)", fontWeight: 600 }}>{variant.name}</span>
       </p>
 
       {/* Title row */}
@@ -306,16 +281,27 @@ export default function ProductDetail({
             </p>
           </div>
 
+          {/* 👇 Volume aur FIRO ab ALAG-ALAG badges mein dikhenge */}
           {pricing.discountPerBag > 0 && (
-            <span
-              className="text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-md"
-              style={{
-                backgroundColor: pricing.appliedType === "FIRO" ? "#fef2f2" : "#f0fdf4",
-                color: pricing.appliedType === "FIRO" ? "#dc2626" : "#166534",
-              }}
-            >
-              {pricing.appliedType === "FIRO" ? "🔥 FIRO Flash" : "📦 Volume"} Discount: ₹{pricing.discountPerBag}/bag OFF
-            </span>
+            <div className="flex flex-col gap-1.5 items-start sm:items-end">
+              {pricing.volumeDiscount > 0 && (
+                <span
+                  className="text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-md"
+                  style={{ backgroundColor: "#f0fdf4", color: "#166534" }}
+                >
+                  📦 Volume Discount: ₹{pricing.volumeDiscount}/bag OFF
+                </span>
+              )}
+
+              {pricing.firoDiscount > 0 && (
+                <span
+                  className="text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-md"
+                  style={{ backgroundColor: "#fef2f2", color: "#dc2626" }}
+                >
+                  🔥 FIRO Flash Discount: ₹{pricing.firoDiscount}/bag OFF
+                </span>
+              )}
+            </div>
           )}
 
           <div className="text-right">
