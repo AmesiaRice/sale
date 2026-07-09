@@ -10,6 +10,7 @@ const bottomNavItems = [
   { label: "Home", href: "/", icon: Home },
   { label: "Products", href: "/products", icon: Package },
   { label: "Contact", href: "/contact", icon: Mail },
+  { label: "Discounts", href: "/discounts", icon: Package },
   { label: "Cart", href: "/cart", icon: ShoppingCart },
 ];
 
