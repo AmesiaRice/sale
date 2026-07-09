@@ -151,8 +151,8 @@ export default function ProductDetail({
           </h2>
 
           <p
-            className="text-[10px] sm:text-xs mt-1 leading-relaxed break-words"
-            style={{ color: "var(--color-gold-400)" }}
+            className="text-[10px] sm:text-xs mt-1 leading-relaxed break-words font-black text-orange-600"
+            // style={{ color: "var(--color-gold-400)" }}
           >
             SKU Code: {variant.skuCode}
 
