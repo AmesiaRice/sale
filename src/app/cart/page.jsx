@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { motion } from "motion/react";
-import { getSkuLines, calculateBestPrice, isLiveFiroOffer } from "@/data/skus";
+import { calculateBestPrice, isLiveFiroOffer } from "@/data/skus";
 import dynamic from "next/dynamic";
 import { useSkuData } from "@/hooks/useSkuData";
+import { useRetailerId } from "@/hooks/useRetailerId";
+import { useIntroEligibility } from "@/hooks/useIntroEligibility";
 
 import {
   ShoppingBag,
@@ -16,6 +18,7 @@ import {
   ShieldCheck,
   Flame,
   PackageCheck,
+  Gift,
 } from "lucide-react";
 
 import { useCart } from "@/app/context/CartContext";
@@ -39,6 +42,9 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false);
   const [selectedSku, setSelectedSku] = useState("");
 
+  // 👇 Introductory offer eligibility check
+  const { isEligible: isIntroEligible, refresh: refreshIntroEligibility } = useIntroEligibility(retailerId);
+
   const products = useMemo(
     () => skuLines.flatMap((line) => line.variants || []),
     [skuLines]
@@ -58,6 +64,8 @@ export default function CartPage() {
           discountPerBag: 0,
           appliedType: "None",
           nextTier: null,
+          introOffer: null,
+          introQualifies: false,
         };
       }
 
@@ -71,6 +79,14 @@ export default function CartPage() {
         if (upcoming) nextTier = upcoming;
       }
 
+      // 👇 Introductory offer: eligible hai (pehle use nahi kiya) AUR
+      // current quantity minQty threshold cross kar rahi hai
+      const introOffer = fullProduct.introOffer || null;
+      const introQualifies =
+        introOffer != null &&
+        isIntroEligible(introOffer.introId) &&
+        item.quantity >= introOffer.minQty;
+
       return {
         ...item,
         basePrice: pricing.basePrice,
@@ -81,9 +97,11 @@ export default function CartPage() {
         appliedType: pricing.appliedType,
         activeFiro: pricing.activeFiro,
         nextTier,
+        introOffer,
+        introQualifies,
       };
     });
-  }, [cartItems, products]);
+  }, [cartItems, products, isIntroEligible]);
 
   const subtotal = pricedItems.reduce(
     (total, item) => total + item.basePrice * item.quantity,
@@ -121,6 +139,8 @@ export default function CartPage() {
     loadSession();
   }, []);
 
+
+
   const handleCheckout = async () => {
     if (!cartItems.length) {
       alert("Your cart is empty.");
@@ -135,7 +155,6 @@ export default function CartPage() {
     setLoading(true);
 
     try {
-      // Poore order ka grand total (ye already CartPage mein calculate ho chuka hai)
       const grandTotal = Math.round(total);
       const totalItemsCount = pricedItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -147,12 +166,14 @@ export default function CartPage() {
         grade: item.grade || "",
         packSize: item.packSizes || "",
         quantity: item.quantity,
-        rate: item.finalPrice,           // per-bag rate (isi item ka)
+        rate: item.finalPrice,
         discountPerBag: item.discountPerBag,
         discountType: item.appliedType,
-        amount: item.finalPrice * item.quantity, // isi item ka total
-        orderTotal: grandTotal,        // 👈 NAYA — poore order ka combined total, har row mein
-        orderTotalItems: totalItemsCount, // 👈 NAYA — poore order mein total bags
+        amount: item.finalPrice * item.quantity,
+        orderTotal: grandTotal,
+        orderTotalItems: totalItemsCount,
+        // 👇 Sirf tab bheja jayega jab retailer eligible ho AUR minQty cross ho
+        INTD_ID: item.introQualifies ? item.introOffer.introId : "",
         createdAt: new Date().toISOString(),
       }));
 
@@ -170,6 +191,7 @@ export default function CartPage() {
 
       alert("Order submitted successfully!");
       clearCart();
+      refreshIntroEligibility();
     } catch (error) {
       console.error(error);
       alert(error.message || "Something went wrong");
@@ -273,19 +295,39 @@ export default function CartPage() {
                   className="bg-white rounded-3xl border shadow-sm p-5 sm:p-6 transition-all duration-300 hover:shadow-lg overflow-hidden"
                   style={{ borderColor: "var(--color-gold-200)" }}
                 >
-                  {/* 🔥 Bada FIRO banner — jab FIRO discount lag raha ho */}
+                  {/* 🔥 Bada FIRO banner */}
                   {item.firoDiscount > 0 && (
                     <div
                       className="-m-5 sm:-m-6 mb-4 sm:mb-5 px-5 sm:px-6 py-3 flex items-center gap-3 text-white"
-                      style={{
-                        background: "linear-gradient(90deg, #dc2626, #ea580c)",
-                      }}
+                      style={{ background: "linear-gradient(90deg, #dc2626, #ea580c)" }}
                     >
                       <Flame size={20} className="shrink-0 animate-pulse" />
                       <p className="text-sm sm:text-base font-bold">
                         FIRO Flash Discount Active! Extra ₹{item.firoDiscount}/bag off applied 🔥
                       </p>
                     </div>
+                  )}
+
+                  {/* 🎁 Introductory offer banner — jab qualify ho raha ho */}
+                  {item.introQualifies && (
+                    <div
+                      className="-m-5 sm:-m-6 mb-4 sm:mb-5 px-5 sm:px-6 py-3 flex items-center gap-3 text-white"
+                      style={{ background: "linear-gradient(90deg, #7E22CE, #C026D3)" }}
+                    >
+                      <Gift size={20} className="shrink-0" />
+                      <p className="text-sm sm:text-base font-bold">
+                        First Order Gift Unlocked! You'll receive {item.introOffer.gift} FREE 🎁
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Intro offer hint — eligible hai lekin abhi qty kam hai */}
+                  {item.introOffer &&
+                    !item.introQualifies &&
+                    isIntroEligible(item.introOffer.introId) && (
+                      <p className="text-[11px] sm:text-xs text-purple-600 mb-3 font-medium">
+                        🎁 {item.introOffer.minQty - item.quantity} bags aur lein, {item.introOffer.gift} FREE paayein (first order special)!
+                      </p>
                   )}
 
                   <div className="flex flex-col lg:flex-row gap-5 lg:items-center lg:justify-between">
@@ -317,7 +359,6 @@ export default function CartPage() {
                             In Stock
                           </span>
 
-                          {/* Volume badge (chhota) */}
                           {item.volumeDiscount > 0 && (
                             <span
                               className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
@@ -329,7 +370,6 @@ export default function CartPage() {
                           )}
                         </div>
 
-                        {/* Next tier hint */}
                         {item.nextTier && (
                           <p className="text-[11px] sm:text-xs text-orange-600 mt-2 font-medium">
                             💡 {item.nextTier.minQty - item.quantity} bags aur lein, ₹
@@ -362,7 +402,6 @@ export default function CartPage() {
                       </div>
 
                       <div className="flex items-center gap-3 flex-wrap">
-                        {/* Quantity — ab manual input ke sath */}
                         <div
                           className="flex items-center rounded-2xl border overflow-hidden"
                           style={{ borderColor: "var(--color-gold-200)" }}
@@ -395,7 +434,6 @@ export default function CartPage() {
                           </button>
                         </div>
 
-                        {/* Remove */}
                         <button
                           onClick={() => removeFromCart(item.id)}
                           className="w-11 h-11 rounded-2xl flex items-center justify-center transition hover:scale-105"
@@ -444,6 +482,11 @@ export default function CartPage() {
                         {item.discountPerBag > 0 && (
                           <p className="text-[11px] text-green-600 font-medium">
                             −₹{item.discountPerBag}/bag ({item.appliedType})
+                          </p>
+                        )}
+                        {item.introQualifies && (
+                          <p className="text-[11px] text-purple-600 font-medium">
+                            🎁 {item.introOffer.gift} FREE
                           </p>
                         )}
                       </div>

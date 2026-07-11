@@ -7,6 +7,9 @@ import Tilt from "react-parallax-tilt";
 import { Flame, Plus, Minus, Check, Sparkles, Tag } from "lucide-react";
 import { calculateBestPrice } from "@/data/skus";
 import { useCart } from "@/app/context/CartContext";
+import { Gift } from "lucide-react"; // Flame, Plus, Minus, Check, Sparkles, Tag ke sath add karein
+import { useRetailerId } from "@/hooks/useRetailerId";
+import { useIntroEligibility } from "@/hooks/useIntroEligibility";
 
 export default function ProductCard({ variant }) {
   const { addToCart } = useCart();
@@ -17,6 +20,12 @@ export default function ProductCard({ variant }) {
     () => calculateBestPrice(variant, quantity),
     [variant, quantity]
   );
+
+  const { retailerId } = useRetailerId();
+  const { isEligible } = useIntroEligibility(retailerId);
+
+  const introOffer = variant.introOffer;
+  const introEligible = introOffer ? isEligible(introOffer.introId) : false;
 
   // appliedType: "None" | "Volume" | "FIRO" | "Volume + FIRO"
   const hasFiro = pricing.appliedType.includes("FIRO");
@@ -121,6 +130,18 @@ export default function ProductCard({ variant }) {
             >
               <Tag size={10} />
               BULK
+            </div>
+          </div>
+        )}
+
+        {introEligible && (
+          <div className="absolute top-3 left-3 z-20">
+            <div
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold text-white shadow-md"
+              style={{ background: "linear-gradient(135deg, #9333EA, #C026D3)" }}
+            >
+              <Gift size={10} />
+              Intoductory Offer
             </div>
           </div>
         )}
@@ -241,6 +262,12 @@ export default function ProductCard({ variant }) {
             </span>
           )}
         </div>
+
+        {introEligible && (
+          <p className="relative px-5 mt-2 text-[10px] leading-snug" style={{ color: "#9333EA" }}>
+            🎁 Order {introOffer.minQty}+ bags & get <strong>{introOffer.gift}</strong> FREE (first order only)
+          </p>
+        )}
 
         {/* More details link */}
         <div className="relative px-5 mt-2">

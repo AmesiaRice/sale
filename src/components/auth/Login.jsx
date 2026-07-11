@@ -1,6 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  phone: z.string().min(1, "Phone number is required"),
+  password: z.string().min(1, "Password is required"),
+});
 
 function getRedirectPath() {
   const params = new URLSearchParams(window.location.search);
@@ -9,42 +16,32 @@ function getRedirectPath() {
 }
 
 export default function Login() {
-  const [form, setForm] = useState({
-    phone: "",
-    password: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm({
+    resolver: zodResolver(loginSchema),
   });
-  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (loading) return;
-
-    setLoading(true);
-
+  const onSubmit = async (data) => {
     try {
       const res = await fetch("/api/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
 
-      const data = await res.json();
+      const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Login failed");
+        throw new Error(result.message || "Login failed");
       }
 
       window.location.assign(getRedirectPath());
     } catch (error) {
-      alert(error.message);
-      setLoading(false);
+      setError("root", { message: error.message });
     }
   };
 
@@ -53,38 +50,46 @@ export default function Login() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
         <h1 className="text-2xl font-bold mb-6">Login</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            name="phone"
-            placeholder="Phone Number"
-            value={form.phone}
-            onChange={handleChange}
-            required
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <input
+              type="text"
+              placeholder="Phone Number"
+              {...register("phone")}
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+            />
+            {errors.phone && (
+              <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
+            )}
+          </div>
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
+          <div>
+            <input
+              type="password"
+              placeholder="Password"
+              {...register("password")}
+              className="w-full border border-gray-300 rounded-lg px-4 py-3"
+            />
+            {errors.password && (
+              <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+            )}
+          </div>
+
+          {errors.root && (
+            <p className="text-red-500 text-sm text-center">{errors.root.message}</p>
+          )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             style={{
               backgroundColor: "var(--color-gold-400)",
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? "not-allowed" : "pointer",
+              opacity: isSubmitting ? 0.7 : 1,
+              cursor: isSubmitting ? "not-allowed" : "pointer",
             }}
             className="w-full text-white py-3 rounded-lg font-semibold"
           >
-            {loading ? "Logging in..." : "Login"}
+            {isSubmitting ? "Logging in..." : "Login"}
           </button>
         </form>
 

@@ -8,8 +8,7 @@ import { useSkuData } from "@/hooks/useSkuData";
 
 const CATEGORY_TABS = [
   { id: "all", label: "All Products" },
-  { id: "lp-loose-pack", label: "LP (Loose Pack)" },
-  { id: "cp-consumer-pack", label: "CP (Consumer Pack)" },
+  { id: "brand", label: "Brand SKU" },
   { id: "ls-lot-sale", label: "LS (Lot Sale)" },
 ];
 

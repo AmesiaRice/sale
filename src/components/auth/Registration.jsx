@@ -1,51 +1,60 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const registrationSchema = z.object({
+  CompanyName: z.string().min(1, "Company name is required"),
+  name: z.string().min(1, "Full name is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  Area: z.string().optional(),
+  Adress: z.string().optional(),
+  password: z.string().min(1, "Password is required"),
+});
+
+const fields = [
+  { name: "CompanyName", type: "text", placeholder: "Your Company Name" },
+  { name: "name", type: "text", placeholder: "Full Name" },
+  { name: "phone", type: "text", placeholder: "Phone Number" },
+  { name: "email", type: "email", placeholder: "Email" },
+  { name: "Area", type: "text", placeholder: "Your Area" },
+  { name: "Adress", type: "text", placeholder: "Your Address" },
+  { name: "password", type: "password", placeholder: "Password" },
+];
 
 export default function Registration() {
   const router = useRouter();
-  const [form, setForm] = useState({
-    CompanyName: "",
-    name: "",
-    phone: "",
-    email: "",
-    password: "",
-    Area: "",
-    Adress: "",
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm({
+    resolver: zodResolver(registrationSchema),
   });
-  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const onSubmit = async (data) => {
     try {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(data),
       });
 
-      const data = await res.json();
+      const result = await res.json();
 
-      console.log("API Response:", data);
-
-      // Check both HTTP status and success flag
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Registration failed");
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || "Registration failed");
       }
 
       alert("Registration successful");
       router.push("/login");
     } catch (error) {
-      alert(error.message);
-    } finally {
-      setLoading(false);
+      setError("root", { message: error.message });
     }
   };
 
@@ -54,83 +63,37 @@ export default function Registration() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
         <h1 className="text-2xl font-bold mb-6">Register</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            name="CompanyName"
-            placeholder="Your Company Name"
-            value={form.CompanyName}
-            onChange={handleChange}
-            required
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={form.name}
-            onChange={handleChange}
-            required
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {fields.map(({ name, type, placeholder }) => (
+            <div key={name}>
+              <input
+                type={type}
+                placeholder={placeholder}
+                {...register(name)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3"
+              />
+              {errors[name] && (
+                <p className="text-red-500 text-xs mt-1">{errors[name].message}</p>
+              )}
+            </div>
+          ))}
 
-          <input
-            type="text"
-            name="phone"
-            placeholder="Phone Number"
-            value={form.phone}
-            onChange={handleChange}
-            required
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
-
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
-
-          <input
-            type="text"
-            name="Area"
-            placeholder="Your Area"
-            value={form.Area}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
-
-          <input
-            type="text"
-            name="Adress"
-            placeholder="Your Adress"
-            value={form.Adress}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
-
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full border border-gray-300 rounded-lg px-4 py-3"
-          />
+          {errors.root && (
+            <p className="text-red-500 text-sm text-center">{errors.root.message}</p>
+          )}
 
           <button
+            type="submit"
+            disabled={isSubmitting}
             style={{
               backgroundColor: "var(--color-gold-400)",
               borderColor: "var(--color-gold-400)",
+              opacity: isSubmitting ? 0.7 : 1,
+              cursor: isSubmitting ? "not-allowed" : "pointer",
             }}
-            type="submit"
-            disabled={loading}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
+            className="w-full text-white py-3 rounded-lg font-semibold"
           >
-            {loading ? "Registering..." : "Register"}
+            {isSubmitting ? "Registering..." : "Register"}
           </button>
         </form>
 

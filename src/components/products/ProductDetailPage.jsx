@@ -6,6 +6,9 @@ import { useSkuData } from "@/hooks/useSkuData";
 import { calculateBestPrice, isLiveFiroOffer } from "@/data/skus";
 import { useCart } from "@/app/context/CartContext";
 import { ArrowLeft, Flame, Plus, Minus, Check, Package } from "lucide-react";
+import { Gift } from "lucide-react"; // baaki icons ke sath
+import { useRetailerId } from "@/hooks/useRetailerId";
+import { useIntroEligibility } from "@/hooks/useIntroEligibility";
 
 export default function ProductDetailPage({ productId }) {
   const router = useRouter();
@@ -38,6 +41,12 @@ export default function ProductDetailPage({ productId }) {
     if (!variant || !Array.isArray(variant.volumeTiers)) return [];
     return [...variant.volumeTiers].sort((a, b) => a.minQty - b.minQty);
   }, [variant]);
+
+  const { retailerId } = useRetailerId();
+  const { isEligible } = useIntroEligibility(retailerId);
+
+  const introOffer = variant?.introOffer || null;
+  const introEligible = introOffer ? isEligible(introOffer.introId) : false;
 
   if (isLoading && !variant) {
     return (
@@ -169,6 +178,18 @@ export default function ProductDetailPage({ productId }) {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
+            </p>
+          </div>
+        )}
+
+        {introEligible && (
+          <div
+            className="rounded-lg px-5 py-3.5 mb-8 flex items-center gap-3 text-white"
+            style={{ background: "linear-gradient(90deg, #7E22CE, #C026D3)" }}
+          >
+            <Gift size={18} className="shrink-0" />
+            <p className="text-sm font-semibold">
+              First Order Special: Order {introOffer.minQty}+ bags and get {introOffer.gift} absolutely FREE!
             </p>
           </div>
         )}

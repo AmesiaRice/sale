@@ -1,22 +1,24 @@
 // ================= API URLs =================
 
-// Volume Discount ki Apps Script API
-const VOLUME_DISCOUNT_API_URL =
-  "https://script.google.com/macros/s/AKfycbzaH1ytviDdRK809w9mkOwONc3W-l71V1r_kGnu1WafOBNNIq00FLfmg5XNrjDZMUW5nw/exec";
+// ---- BRAND (LP + CP merged) ----
+const BRAND_API_URL = ""; // Brand product data API — abhi tak nahi bani
+const BRAND_VOLUME_DISCOUNT_API_URL = ""; // Brand ka apna Volume Discount sheet — abhi nahi bani
+const BRAND_FIRO_DISCOUNT_API_URL = ""; // Brand ka apna FIRO sheet — abhi nahi bani
 
-// FIRO (Flash) Discount API
-const FIRO_DISCOUNT_API_URL =
-  "https://script.google.com/macros/s/AKfycbx1umqO_4WiPxTTVv3OXcxSLUZFqo6d8MubR2Um_tTuJS8tP_LvHQzxYPw9rCPknvSLkA/exec";
-
-// LP + CP dono ki nayi API (raw/flat format, SKU ID prefix se "LP-" / "CP-" pehchana jayega)
-const LP_CP_API_URL =
-  "";
-
-// LS (Lot Sale) ki API — raw/flat format
+// ---- LOT (Lot Sale) ----
 const LOT_API_URL =
   "https://script.google.com/macros/s/AKfycbwbEwNR8sT9rELWPco3WFFwpEFl-Xg7EuKZ1NSEfoHmZKYRCzQY12-nhzj6khrXQOweRg/exec";
 
-export const skuLines = []; // fallback
+  const LOT_VOLUME_DISCOUNT_API_URL =
+  "https://script.google.com/macros/s/AKfycbzaH1ytviDdRK809w9mkOwONc3W-l71V1r_kGnu1WafOBNNIq00FLfmg5XNrjDZMUW5nw/exec";
+
+  const LOT_FIRO_DISCOUNT_API_URL =
+  "https://script.google.com/macros/s/AKfycbx1umqO_4WiPxTTVv3OXcxSLUZFqo6d8MubR2Um_tTuJS8tP_LvHQzxYPw9rCPknvSLkA/exec";
+
+const INTRO_OFFER_API_URL = 
+   "https://script.google.com/macros/s/AKfycbzPn7WxZZqzTNzibGw4CB5D3LrzO1wvDMRvoIwKFk0qFcqYxhmwBsyiAk1ZNzS6XwFN5A/exec";
+
+  export const skuLines = []; // fallback
 
 // ================= Helpers =================
 
@@ -28,8 +30,7 @@ function slugify(text) {
 }
 
 /**
- * Ek raw sheet row (LP/CP/LS teeno ka same shape hai)
- * ko variant object mein convert karta hai.
+ * Ek raw sheet row ko variant object mein convert karta hai.
  */
 function mapRowToVariant(row, { series, packagingType, channelCategory, skuStatus, primaryUse, pitch }) {
   const skuId = row["SKU ID"];
@@ -66,7 +67,6 @@ function mapRowToVariant(row, { series, packagingType, channelCategory, skuStatu
     whyChoose: "",
     aboutProduct: "",
 
-    // Extra raw pricing fields
     unitPerCartoon: row["Unit per Cartoon / Bag"] ?? null,
     cd: row["C*D"] ?? null,
     consumerDiscount: row["Consumer Discount"] ?? null,
@@ -76,72 +76,56 @@ function mapRowToVariant(row, { series, packagingType, channelCategory, skuStatu
     consumerPricePerKg: row["Consumer Price / Kg"] ?? null,
     dealerPricePerKg: row["Dealer Price / KG"] ?? null,
 
-    // 👇 Discount data yahan attach hoga (getSkuLines mein set hoga)
     volumeTiers: [],
     firoOffers: [],
+    introOffer: null, // 👈 YE LINE ADD KAREIN
   };
 }
 
 /**
- * LP + CP ke raw combined data ko prefix ("LP-" / "CP-") se
- * split karke 2 alag groups banata hai.
+ * Brand ke raw data (LP-/CP- prefix wale rows) ko EK single group mein
+ * combine karta hai. Prefix sirf per-row metadata (packaging, channel)
+ * decide karne ke liye use hota hai, lekin ab alag tabs nahi banti —
+ * sab ek hi "Brand" tab ke andar dikhenge.
  */
-function transformLpCpData(rawRows) {
-  if (!Array.isArray(rawRows) || rawRows.length === 0) return [];
+function transformBrandData(rawRows) {
+  if (!Array.isArray(rawRows) || rawRows.length === 0) return null;
 
   const validRows = rawRows.filter(
     (row) => row["SKU ID"] && String(row["SKU ID"]).trim() !== ""
   );
 
-  const lpRows = validRows.filter((row) =>
-    String(row["SKU ID"]).trim().toUpperCase().startsWith("LP-")
-  );
+  if (validRows.length === 0) return null;
 
-  const cpRows = validRows.filter((row) =>
-    String(row["SKU ID"]).trim().toUpperCase().startsWith("CP-")
-  );
+  const variants = validRows.map((row) => {
+    const isLoosePack = String(row["SKU ID"]).trim().toUpperCase().startsWith("LP-");
 
-  const groups = [];
-
-  if (lpRows.length > 0) {
-    groups.push({
-      id: "lp-loose-pack",
-      name: "LP (Loose Pack) SKU",
-      icon: "⭐",
-      variants: lpRows.map((row) =>
-        mapRowToVariant(row, {
+    return mapRowToVariant(row, isLoosePack
+      ? {
           series: "LP (Loose Pack)",
           packagingType: "Printed Pouch",
           channelCategory: "General Trade, Wholesale",
           skuStatus: "Active",
           primaryUse: "Retail loose sale, HoReCa bulk supply",
-          pitch:
-            "Yeh loose sale range hai, retailer customer ke hisaab se bech sakta hai aur movement strong rehta hai.",
-        })
-      ),
-    });
-  }
-
-  if (cpRows.length > 0) {
-    groups.push({
-      id: "cp-consumer-pack",
-      name: "CP (Consumer Pack) SKU",
-      icon: "⭐",
-      variants: cpRows.map((row) =>
-        mapRowToVariant(row, {
+          pitch: "Yeh loose sale range hai, retailer customer ke hisaab se bech sakta hai aur movement strong rehta hai.",
+        }
+      : {
           series: "CP (Consumer Pack)",
           packagingType: "Printed Pouch",
           channelCategory: "Modern Trade, Quick Commerce, D2C Website, Export",
           skuStatus: "Active",
           primaryUse: "Daily cooking, retailer resale",
-          pitch:
-            "Yeh premium consumer pack range hai, brand lovers aur daily household use ke liye strong hai.",
-        })
-      ),
-    });
-  }
+          pitch: "Yeh premium consumer pack range hai, brand lovers aur daily household use ke liye strong hai.",
+        }
+    );
+  });
 
-  return groups;
+  return {
+    id: "brand",
+    name: "Brand SKU",
+    icon: "⭐",
+    variants,
+  };
 }
 
 /**
@@ -167,81 +151,85 @@ function transformLotSaleData(rawRows) {
         channelCategory: "Wholesale",
         skuStatus: "Seasonal",
         primaryUse: "Bulk trading and redistribution",
-        pitch:
-          "Yeh lot based bulk sale hai, wholesalers/caterers ke liye fast movement aur cash flow product hai.",
+        pitch: "Yeh lot based bulk sale hai, wholesalers/caterers ke liye fast movement aur cash flow product hai.",
       })
     ),
   };
 }
 
-// ================= Volume Discount Helpers =================
+// ================= Introductory Offer Helpers =================
 
-/**
- * Raw volume discount rows ko SKU ID ke basis par group karta hai,
- * har SKU ke tiers ko Min Qty ke hisaab se ascending sort karta hai.
- */
-function groupVolumeDiscounts(rawRows) {
+function groupIntroOffers(rawRows) {
   const map = {};
-
   rawRows.forEach((row) => {
     const skuId = row["SKU ID"];
     if (!skuId) return;
+    // Ek SKU par ek hi active intro offer maante hain
+    map[skuId] = {
+      introId: row["INTD_ID"],
+      minQty: Number(row["Minimum Order Qty"]) || 0,
+      gift: row["GIFT"] || "",
+      remarks: row["Remarks"] || "",
+    };
+  });
+  return map;
+}
 
+async function fetchIntroOffers() {
+  if (!INTRO_OFFER_API_URL) return {};
+  try {
+    const res = await fetch(INTRO_OFFER_API_URL, { method: "GET", next: { revalidate: 60 } });
+    if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+    const rawData = await res.json();
+    if (!Array.isArray(rawData)) return {};
+    return groupIntroOffers(rawData);
+  } catch (error) {
+    console.error("Failed to fetch Introductory Offers:", error);
+    return {};
+  }
+}
+
+// ================= Generic Discount Fetchers =================
+// Ab reusable — Brand aur Lot dono apni-apni URL ke sath isi function ko call karenge.
+
+function groupByMinQty(rawRows) {
+  const map = {};
+  rawRows.forEach((row) => {
+    const skuId = row["SKU ID"];
+    if (!skuId) return;
     if (!map[skuId]) map[skuId] = [];
-
     map[skuId].push({
       minQty: Number(row["Minimum Order Qty"]) || 0,
       benefitPerBag: Number(row["Volume Benefit ₹/Bag"]) || 0,
     });
   });
-
   Object.keys(map).forEach((skuId) => {
     map[skuId].sort((a, b) => a.minQty - b.minQty);
   });
-
   return map;
 }
 
-async function fetchVolumeDiscounts() {
-  if (!VOLUME_DISCOUNT_API_URL) return {};
-
+async function fetchVolumeDiscounts(apiUrl) {
+  if (!apiUrl) return {};
   try {
-    const res = await fetch(VOLUME_DISCOUNT_API_URL, {
-      method: "GET",
-      next: { revalidate: 30 },
-    });
-
+    const res = await fetch(apiUrl, { method: "GET", next: { revalidate: 30 } });
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-
     const rawData = await res.json();
     if (!Array.isArray(rawData)) return {};
-
-    const activeRows = rawData.filter(
-      (row) => row["Active Status"] === "Active"
-    );
-
-    return groupVolumeDiscounts(activeRows);
+    const activeRows = rawData.filter((row) => row["Active Status"] === "Active");
+    return groupByMinQty(activeRows);
   } catch (error) {
     console.error("Failed to fetch Volume Discounts:", error);
     return {};
   }
 }
 
-// ================= FIRO (Flash) Discount Helpers =================
-
-/**
- * Raw FIRO rows ko SKU ID ke basis par group karta hai.
- * Live/expired ka check UI-render time par hoga (isLiveFiroOffer function se).
- */
 function groupFiroOffers(rawRows) {
   const map = {};
-
   rawRows.forEach((row) => {
     const skuId = row["SKU ID"];
     if (!skuId) return;
-
     if (!map[skuId]) map[skuId] = [];
-
     map[skuId].push({
       firoId: row["FIRO ID"],
       firoName: row["FIRO Name"],
@@ -253,26 +241,17 @@ function groupFiroOffers(rawRows) {
       remarks: row["Remarks"] || "",
     });
   });
-
   return map;
 }
 
-async function fetchFiroOffers() {
-  if (!FIRO_DISCOUNT_API_URL) return {};
-
+async function fetchFiroOffers(apiUrl) {
+  if (!apiUrl) return {};
   try {
-    const res = await fetch(FIRO_DISCOUNT_API_URL, {
-      method: "GET",
-      next: { revalidate: 30 },
-    });
-
+    const res = await fetch(apiUrl, { method: "GET", next: { revalidate: 30 } });
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-
     const rawData = await res.json();
     if (!Array.isArray(rawData)) return {};
-
     const activeRows = rawData.filter((row) => row["Status"] === "Active");
-
     return groupFiroOffers(activeRows);
   } catch (error) {
     console.error("Failed to fetch FIRO offers:", error);
@@ -291,17 +270,11 @@ export function isLiveFiroOffer(offer) {
 }
 
 /**
- * Diye gaye quantity ke liye best applicable price nikalta hai:
- * - Normal dealer price se start
- * - Volume discount tier apply hota hai (base discount)
- * - Agar koi live FIRO offer bhi qty ke liye eligible hai, to wo Volume ke
- *   UPAR STACK hoga (extra discount) — Volume ke bina FIRO nahi hatega,
- *   dono ek sath add hote hain.
+ * Volume + FIRO discount STACK hote hain (Volume base, FIRO extra upar).
  */
 export function calculateBestPrice(variant, quantity) {
   const basePrice = variant.dealerPrice || 0;
 
-  // Best Volume tier dhoondenge (jo bhi highest applicable ho)
   let volumeBenefit = 0;
   if (Array.isArray(variant.volumeTiers)) {
     variant.volumeTiers.forEach((tier) => {
@@ -311,83 +284,60 @@ export function calculateBestPrice(variant, quantity) {
     });
   }
 
-  // Best live FIRO offer dhoondenge
   let firoBenefit = 0;
   let activeFiro = null;
   if (Array.isArray(variant.firoOffers)) {
     variant.firoOffers.forEach((offer) => {
-      if (
-        isLiveFiroOffer(offer) &&
-        quantity >= offer.minQty &&
-        offer.benefitPerBag > firoBenefit
-      ) {
+      if (isLiveFiroOffer(offer) && quantity >= offer.minQty && offer.benefitPerBag > firoBenefit) {
         firoBenefit = offer.benefitPerBag;
         activeFiro = offer;
       }
     });
   }
 
-  // Dono stack — Volume base hai, FIRO uske upar extra
   const totalDiscount = volumeBenefit + firoBenefit;
 
   let appliedType = "None";
-  if (volumeBenefit > 0 && firoBenefit > 0) {
-    appliedType = "Volume + FIRO";
-  } else if (firoBenefit > 0) {
-    appliedType = "FIRO";
-  } else if (volumeBenefit > 0) {
-    appliedType = "Volume";
-  }
+  if (volumeBenefit > 0 && firoBenefit > 0) appliedType = "Volume + FIRO";
+  else if (firoBenefit > 0) appliedType = "FIRO";
+  else if (volumeBenefit > 0) appliedType = "Volume";
 
   return {
     basePrice,
-    volumeDiscount: volumeBenefit, // alag se breakdown ke liye
-    firoDiscount: firoBenefit,     // alag se breakdown ke liye
-    discountPerBag: totalDiscount, // total combined discount
+    volumeDiscount: volumeBenefit,
+    firoDiscount: firoBenefit,
+    discountPerBag: totalDiscount,
     finalPrice: basePrice - totalDiscount,
-    appliedType, // "Volume + FIRO" | "FIRO" | "Volume" | "None"
-    activeFiro,  // agar FIRO applied hua to uska poora object
+    appliedType,
+    activeFiro,
   };
 }
 
-// ================= Fetchers (LP/CP/LS) =================
+// ================= Product Data Fetchers =================
 
-async function fetchLpCpData() {
-  if (!LP_CP_API_URL) {
-    console.warn("LP+CP API URL abhi set nahi hai — LP/CP data skip ho raha hai.");
-    return [];
+async function fetchBrandData() {
+  if (!BRAND_API_URL) {
+    console.warn("Brand API URL abhi set nahi hai — Brand data skip ho raha hai.");
+    return null;
   }
-
   try {
-    const res = await fetch(LP_CP_API_URL, {
-      method: "GET",
-      next: { revalidate: 10 },
-    });
-
+    const res = await fetch(BRAND_API_URL, { method: "GET", next: { revalidate: 10 } });
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-
     const rawData = await res.json();
-    if (!Array.isArray(rawData)) return [];
-
-    return transformLpCpData(rawData);
+    if (!Array.isArray(rawData)) return null;
+    return transformBrandData(rawData);
   } catch (error) {
-    console.error("Failed to fetch LP+CP data:", error);
-    return [];
+    console.error("Failed to fetch Brand data:", error);
+    return null;
   }
 }
 
 async function fetchLotSaleData() {
   try {
-    const res = await fetch(LOT_API_URL, {
-      method: "GET",
-      next: { revalidate: 10 },
-    });
-
+    const res = await fetch(LOT_API_URL, { method: "GET", next: { revalidate: 10 } });
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-
     const rawData = await res.json();
     if (!Array.isArray(rawData)) return null;
-
     return transformLotSaleData(rawData);
   } catch (error) {
     console.error("Failed to fetch LS (Lot Sale) data:", error);
@@ -399,30 +349,49 @@ async function fetchLotSaleData() {
 
 export async function getSkuLines() {
   try {
-    const [lpCpGroups, lotSaleGroup, volumeDiscounts, firoOffers] = await Promise.all([
-      fetchLpCpData(),
+    const [
+      brandGroup,
+      lotSaleGroup,
+      brandVolumeDiscounts,
+      brandFiroOffers,
+      lotVolumeDiscounts,
+      lotFiroOffers,
+      introOffers,
+    ] = await Promise.all([
+      fetchBrandData(),
       fetchLotSaleData(),
-      fetchVolumeDiscounts(),
-      fetchFiroOffers(),
+      fetchVolumeDiscounts(BRAND_VOLUME_DISCOUNT_API_URL),
+      fetchFiroOffers(BRAND_FIRO_DISCOUNT_API_URL),
+      fetchVolumeDiscounts(LOT_VOLUME_DISCOUNT_API_URL),
+      fetchFiroOffers(LOT_FIRO_DISCOUNT_API_URL),
+      fetchIntroOffers(),
     ]);
 
-    const combined = [...lpCpGroups];
+    const combined = [];
 
-    if (lotSaleGroup) {
-      combined.push(lotSaleGroup);
+    // Brand group ko uski apni discount maps se attach karo
+    if (brandGroup) {
+      brandGroup.variants.forEach((variant) => {
+        variant.volumeTiers = brandVolumeDiscounts[variant.skuId] || [];
+        variant.firoOffers = brandFiroOffers[variant.skuId] || [];
+        variant.introOffer = null; // 👈 ADD KIYA — Brand ke liye abhi intro offer nahi hai
+      });
+      combined.push(brandGroup);
     }
 
-    // Har variant ke andar uske volume tiers aur FIRO offers attach karo (SKU ID se match)
-    combined.forEach((group) => {
-      group.variants.forEach((variant) => {
-        variant.volumeTiers = volumeDiscounts[variant.skuId] || [];
-        variant.firoOffers = firoOffers[variant.skuId] || [];
+    // Lot group ko uski apni discount maps se attach karo
+    if (lotSaleGroup) {
+      lotSaleGroup.variants.forEach((variant) => {
+        variant.volumeTiers = lotVolumeDiscounts[variant.skuId] || [];
+        variant.firoOffers = lotFiroOffers[variant.skuId] || [];
+        variant.introOffer = introOffers[variant.skuId] || null; // 👈 ADD KIYA — sirf Lot ke liye
       });
-    });
+      combined.push(lotSaleGroup);
+    }
 
     return combined;
   } catch (error) {
     console.error("Failed to fetch SKU lines:", error);
-    return skuLines; // fallback
+    return skuLines;
   }
 }
