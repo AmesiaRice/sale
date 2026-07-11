@@ -1,4 +1,4 @@
-import ContactSection from '@/components/ContactSection'
+import ContactSection from '@/components/home/ContactSection'
 import React from 'react'
 
 const page = () => {

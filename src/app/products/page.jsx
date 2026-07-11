@@ -1,4 +1,4 @@
-import ProductsPageClient from "@/components/ProductsPageClient";
+import ProductsPageClient from "@/components/products/ProductsPageClient";
 
 export const metadata = {
   title: "Products — Saifco Basmati Rice SKU Catalogue",

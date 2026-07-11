@@ -1,10 +1,10 @@
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import MobileBottomNav from "@/components/MobileBottomNav";
-import Footer from "@/components/Footer";
+import Navbar from "@/components/layout/Navbar";
+import MobileBottomNav from "@/components/layout/MobileBottomNav";
+import Footer from "@/components/layout/Footer";
 import { CartProvider } from "@/app/context/CartContext";
 import { Playfair_Display, DM_Sans } from "next/font/google";
-import SWRProvider from "@/components/SWRProvider"; // 👈 alag file se import
+import SWRProvider from "@/components/layout/SWRProvider"; // 👈 alag file se import
 
 const playfair = Playfair_Display({
   subsets: ["latin"],

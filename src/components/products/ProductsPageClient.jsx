@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { useSkuData } from "../app/hooks/useSkuData";
-import CategoryTabs from "@/components/CategoryTabs";
-import ProductCard from "@/components/ProductCard";
+import { useSkuData } from "@/hooks/useSkuData";
+import CategoryTabs from "@/components/products/CategoryTabs";
+import ProductCard from "@/components/products/ProductCard";
 
 export default function ProductsPageClient() {
   const { skuLines, isLoading: loading } = useSkuData();

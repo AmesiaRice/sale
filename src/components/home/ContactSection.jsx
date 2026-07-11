@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSkuList } from "@/app/lib/getSkuList";
+import { getSkuList } from "@/lib/getSkuList";
 
 const contactCards = [
   { icon: "📞", label: "Call Us", value: "+91-9" },

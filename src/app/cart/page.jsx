@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { motion } from "motion/react";
 import { getSkuLines, calculateBestPrice, isLiveFiroOffer } from "@/data/skus";
 import dynamic from "next/dynamic";
-import { useSkuData } from "../hooks/useSkuData";
+import { useSkuData } from "@/hooks/useSkuData";
 
 import {
   ShoppingBag,

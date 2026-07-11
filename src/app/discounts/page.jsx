@@ -1,4 +1,4 @@
-import DiscountsPageClient from "@/components/DiscountsPageClient";
+import DiscountsPageClient from "@/components/discounts/DiscountsPageClient";
 
 export default function Page() {
   return <DiscountsPageClient />;

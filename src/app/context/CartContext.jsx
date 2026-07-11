@@ -8,7 +8,7 @@ import {
 } from "react";
 
 const CartContext = createContext();
-import CartToast from "@/components/CartToast";
+import CartToast from "@/components/cart/CartToast";
 
 export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState([]);

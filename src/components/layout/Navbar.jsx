@@ -1,6 +1,6 @@
 "use client";
 
-import Navlink from "./Navlink";
+import Navlink from "@/components/layout/Navlink";
 import { useCart } from "@/app/context/CartContext";
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";

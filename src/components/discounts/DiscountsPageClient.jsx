@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getSkuLines, isLiveFiroOffer } from "@/data/skus";
 import Select from "react-select";
 import { Flame, PackageCheck, Tag, Clock, Search } from "lucide-react";
-import { useSkuData } from "../app/hooks/useSkuData";
+import { useSkuData } from "@/hooks/useSkuData";
 
 const CATEGORY_TABS = [
   { id: "all", label: "All Products" },

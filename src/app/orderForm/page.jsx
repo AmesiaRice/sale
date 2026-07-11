@@ -1,4 +1,4 @@
-import OrderForm from '@/components/OrderForm'
+import OrderForm from '@/components/orders/OrderForm'
 import React from 'react'
 
 const page = () => {

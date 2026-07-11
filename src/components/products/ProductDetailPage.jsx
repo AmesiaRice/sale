@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSkuData } from "../app/hooks/useSkuData";
+import { useSkuData } from "@/hooks/useSkuData";
 import { calculateBestPrice, isLiveFiroOffer } from "@/data/skus";
 import { useCart } from "@/app/context/CartContext";
 import { ArrowLeft, Flame, Plus, Minus, Check, Package } from "lucide-react";

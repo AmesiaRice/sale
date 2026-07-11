@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSkuList } from "@/app/lib/getSkuList";
+import { getSkuList } from "@/lib/getSkuList";
 
 export default function OrderForm() {
   const [form, setForm] = useState({

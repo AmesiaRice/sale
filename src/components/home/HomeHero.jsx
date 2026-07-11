@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { Reveal } from "@/components/motion/Reveal";
-import Button from "./Button";
+import Button from "@/components/common/Button";
 
 const container = {
   hidden: {},
