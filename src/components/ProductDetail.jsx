@@ -122,7 +122,13 @@ export default function ProductDetail({
           ? `₹${(variant.consumerPriceBag - variant.dealerPrice).toFixed(2)}`
           : "N/A",
     },
-    { label: "Rate / KG", value: variant.dealerPricePerKg != null ? `₹${variant.dealerPricePerKg.toFixed(2)}` : "N/A" },
+    {
+  label: "Rate / KG",
+  value:
+    variant.dealerPricePerKg != null && !isNaN(Number(variant.dealerPricePerKg))
+      ? `₹${Number(variant.dealerPricePerKg).toFixed(2)}`
+      : "N/A",
+},
   ];
 
   return (
