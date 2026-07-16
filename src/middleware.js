@@ -7,7 +7,7 @@ export function middleware(request) {
   const { pathname } = request.nextUrl;
 
   // Public routes
-  const publicRoutes = ["/login", "/registration"];
+  const publicRoutes = ["/login", "/registration","/"];
 
   // Ignore Next.js internals, static files, and API routes
   if (

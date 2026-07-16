@@ -10,6 +10,7 @@ const navlinks = [
   { label: "Products", href: "/products" },
   { label: "Contact", href: "/contact" },
   { label: "Discounts", href: "/discounts" },
+  { label: "Orders", href: "/orders" },   // 👈 NAYA ADD KIYA
   { label: "Cart", href: "/cart" },
 ];
 
