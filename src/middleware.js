@@ -4,7 +4,6 @@ import { getRequiredPermission, hasPermission } from "@/lib/admin/permission";
 export function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Ignore Next.js internals, static files, and API routes
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -13,12 +12,10 @@ export function middleware(request) {
     return NextResponse.next();
   }
 
-  // ================= ADMIN ROUTES (naya block) =================
   if (pathname.startsWith("/admin")) {
     return handleAdminRoute(request, pathname);
   }
 
-  // ================= RETAILER ROUTES (existing, untouched) =================
   const isLoggedIn = request.cookies.get("user-session")?.value;
 
   const publicRoutes = ["/login", "/registration", "/"];
@@ -39,17 +36,14 @@ export function middleware(request) {
   return NextResponse.next();
 }
 
-// ================= Admin Route Handler =================
-
 function handleAdminRoute(request, pathname) {
-  // /admin/login hamesha publicly accessible hai (warna login hi nahi kar payenge)
-  if (pathname === "/admin/login") {
+  // /admin/login aur /admin/access-denied hamesha publicly accessible hain
+  if (pathname === "/admin/login" || pathname === "/admin/access-denied") {
     return NextResponse.next();
   }
 
   const adminSessionCookie = request.cookies.get("admin_session")?.value;
 
-  // Session hi nahi hai — login page bhejo
   if (!adminSessionCookie) {
     const loginUrl = new URL("/admin/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
@@ -60,15 +54,12 @@ function handleAdminRoute(request, pathname) {
   try {
     admin = JSON.parse(adminSessionCookie);
   } catch {
-    // Corrupt cookie — safe side, login pe bhej do
     const loginUrl = new URL("/admin/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
 
   const requiredPermission = getRequiredPermission(pathname);
 
-  // Agar is route ke liye koi specific permission define nahi hai, allow kar do
-  // (jaise koi generic admin page jo sabko dikhni chahiye)
   if (!requiredPermission) {
     return NextResponse.next();
   }
@@ -76,7 +67,6 @@ function handleAdminRoute(request, pathname) {
   const allowed = hasPermission(admin.role, requiredPermission);
 
   if (!allowed) {
-    // Permission nahi hai — "Access Denied" page par bhejo
     return NextResponse.redirect(new URL("/admin/access-denied", request.url));
   }
 

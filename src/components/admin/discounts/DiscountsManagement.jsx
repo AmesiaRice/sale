@@ -116,13 +116,13 @@ export default function DiscountsManagement() {
         ))}
       </div>
 
-      <button
+      {/* <button
         onClick={() => setShowForm((prev) => !prev)}
         className="text-sm font-semibold px-4 py-2 rounded-lg text-white cursor-pointer"
         style={{ backgroundColor: "var(--color-gold-500)" }}
       >
         {showForm ? "Cancel" : `+ New ${config.label}`}
-      </button>
+      </button> */}
 
       {/* Create Form */}
       {showForm && (
