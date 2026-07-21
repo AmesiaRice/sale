@@ -217,7 +217,7 @@ export default function ProductCard({ variant }) {
             {variant.name}
           </h3>
           <p className="text-[10px] mt-1 tracking-wide" style={{ color: "#B0A48D" }}>
-            {variant.packSizes}
+           {variant.skuCode}
           </p>
         </div>
 
