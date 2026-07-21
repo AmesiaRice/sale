@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
+import { getRequiredPermission, hasPermission } from "@/lib/admin/permission";
 
 export function middleware(request) {
-  // Cookie check
-  const isLoggedIn = request.cookies.get("user-session")?.value;
-
   const { pathname } = request.nextUrl;
-
-  // Public routes
-  const publicRoutes = ["/login", "/registration","/"];
 
   // Ignore Next.js internals, static files, and API routes
   if (
@@ -18,7 +13,16 @@ export function middleware(request) {
     return NextResponse.next();
   }
 
-  // Allow login and register pages without authentication
+  // ================= ADMIN ROUTES (naya block) =================
+  if (pathname.startsWith("/admin")) {
+    return handleAdminRoute(request, pathname);
+  }
+
+  // ================= RETAILER ROUTES (existing, untouched) =================
+  const isLoggedIn = request.cookies.get("user-session")?.value;
+
+  const publicRoutes = ["/login", "/registration", "/"];
+
   if (publicRoutes.includes(pathname)) {
     if (isLoggedIn && pathname === "/login") {
       return NextResponse.redirect(new URL("/", request.url));
@@ -26,14 +30,56 @@ export function middleware(request) {
     return NextResponse.next();
   }
 
-  // Redirect to login if no session cookie
   if (!isLoggedIn) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Allow access
+  return NextResponse.next();
+}
+
+// ================= Admin Route Handler =================
+
+function handleAdminRoute(request, pathname) {
+  // /admin/login hamesha publicly accessible hai (warna login hi nahi kar payenge)
+  if (pathname === "/admin/login") {
+    return NextResponse.next();
+  }
+
+  const adminSessionCookie = request.cookies.get("admin_session")?.value;
+
+  // Session hi nahi hai — login page bhejo
+  if (!adminSessionCookie) {
+    const loginUrl = new URL("/admin/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  let admin;
+  try {
+    admin = JSON.parse(adminSessionCookie);
+  } catch {
+    // Corrupt cookie — safe side, login pe bhej do
+    const loginUrl = new URL("/admin/login", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  const requiredPermission = getRequiredPermission(pathname);
+
+  // Agar is route ke liye koi specific permission define nahi hai, allow kar do
+  // (jaise koi generic admin page jo sabko dikhni chahiye)
+  if (!requiredPermission) {
+    return NextResponse.next();
+  }
+
+  const allowed = hasPermission(admin.role, requiredPermission);
+
+  if (!allowed) {
+    // Permission nahi hai — "Access Denied" page par bhejo
+    return NextResponse.redirect(new URL("/admin/access-denied", request.url));
+  }
+
   return NextResponse.next();
 }
 

@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 
 const ORDER_HISTORY_APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbyfJ0xNIlvj13pwUTj2I0gz0gh2Zi440Pim5P69pt2UQJXbf2u2R6Rn3vPFTjvyVyVpIQ/exec";
+  "https://script.google.com/macros/s/AKfycbwi1xDTvZ6NW3Jdoogd7pve94LvCCxjcVv83DhjbLq0RqEofPyAXXsgPSV6pwvVBC6AEA/exec";
 
 export const maxDuration = 30; // seconds (Vercel cold-start ke liye)
 
