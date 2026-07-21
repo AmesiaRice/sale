@@ -1,10 +1,8 @@
 import "./globals.css";
-import Navbar from "@/components/layout/Navbar";
-import MobileBottomNav from "@/components/layout/MobileBottomNav";
-import Footer from "@/components/layout/Footer";
+import ConditionalChrome from "@/components/layout/ConditionalChrome";
 import { CartProvider } from "@/app/context/CartContext";
 import { Playfair_Display, DM_Sans } from "next/font/google";
-import SWRProvider from "@/components/layout/SWRProvider"; // 👈 alag file se import
+import SWRProvider from "@/components/layout/SWRProvider";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -32,12 +30,9 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${playfair.variable} ${dmSans.variable}`}>
       <body className="min-h-screen flex flex-col font-[family-name:var(--font-body)]">
         <CartProvider>
-          <Navbar />
-          <div className="flex flex-col flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
-            <SWRProvider>{children}</SWRProvider>
-          </div>
-          <Footer />
-          <MobileBottomNav />
+          <SWRProvider>
+            <ConditionalChrome>{children}</ConditionalChrome>
+          </SWRProvider>
         </CartProvider>
       </body>
     </html>

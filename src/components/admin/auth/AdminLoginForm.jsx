@@ -24,26 +24,28 @@ export default function AdminLoginForm() {
   });
 
   const onSubmit = async (data) => {
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+  try {
+    const res = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
 
-      const result = await res.json();
+    const result = await res.json();
 
-      if (!res.ok || !result.success) {
-        throw new Error(result.message || "Login failed");
-      }
-
-      const callbackUrl = searchParams.get("callbackUrl") || "/admin";
-      router.push(callbackUrl);
-      router.refresh();
-    } catch (error) {
-      setError("root", { message: error.message });
+    if (!res.ok || !result.success) {
+      throw new Error(result.message || "Login failed");
     }
-  };
+
+    const callbackUrl = searchParams.get("callbackUrl") || "/admin";
+
+    // 👇 Full page reload — cookie guaranteed set hone ke baad hi
+    // middleware naya request process karega, koi race condition nahi
+    window.location.assign(callbackUrl);
+  } catch (error) {
+    setError("root", { message: error.message });
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
