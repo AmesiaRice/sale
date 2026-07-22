@@ -44,6 +44,18 @@ export const ROUTE_PERMISSIONS = {
   "/admin/place-order": "place_order_on_behalf",
 };
 
+export function getDefaultRouteForRole(role) {
+  const permissions = ROLE_PERMISSIONS[role] || [];
+
+  for (const [route, requiredPermission] of Object.entries(ROUTE_PERMISSIONS)) {
+    if (permissions.includes(requiredPermission)) {
+      return route;
+    }
+  }
+
+  // Agar role ke paas koi bhi route permission nahi hai
+  return "/admin/access-denied";
+}
 /**
  * Diye gaye pathname ke liye required permission dhoondta hai.
  * Sabse specific (longest) match ko priority deta hai.
