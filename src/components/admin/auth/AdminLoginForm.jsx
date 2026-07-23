@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { getDefaultRouteForRole } from "@/lib/admin/permission";
+import { getDefaultRouteForRole, getRequiredPermission, hasPermission } from "@/lib/admin/permission";
 
 const loginSchema = z.object({
   phone: z.string().min(1, "Phone number is required"),
@@ -39,7 +39,10 @@ export default function AdminLoginForm() {
     }
 
     const explicitCallback = searchParams.get("callbackUrl");
-    const redirectTo = explicitCallback || getDefaultRouteForRole(result.admin.role);
+    const requiredPermission = explicitCallback ? getRequiredPermission(explicitCallback) : null;
+    const callbackAllowed =
+      explicitCallback && (!requiredPermission || hasPermission(result.admin.role, requiredPermission));
+    const redirectTo = callbackAllowed ? explicitCallback : getDefaultRouteForRole(result.admin.role);
 
     window.location.assign(redirectTo);
   } catch (error) {

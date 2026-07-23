@@ -96,9 +96,9 @@ function RetailersTab({ search }) {
     const q = search.toLowerCase();
     return retailers.filter(
       (r) =>
-        r.name?.toLowerCase().includes(q) ||
-        r.companyName?.toLowerCase().includes(q) ||
-        r.phone?.toLowerCase().includes(q)
+        String(r.name ?? "").toLowerCase().includes(q) ||
+        String(r.companyName ?? "").toLowerCase().includes(q) ||
+        String(r.phone ?? "").toLowerCase().includes(q)
     );
   }, [retailers, search]);
 
@@ -353,9 +353,9 @@ function ConversationsTab({ search }) {
     const q = search.toLowerCase();
     return groups.filter(
       (g) =>
-        g.name?.toLowerCase().includes(q) ||
-        g.companyName?.toLowerCase().includes(q) ||
-        g.phone?.toLowerCase().includes(q)
+        String(g.name ?? "").toLowerCase().includes(q) ||
+        String(g.companyName ?? "").toLowerCase().includes(q) ||
+        String(g.phone ?? "").toLowerCase().includes(q)
     );
   }, [groups, search]);
 

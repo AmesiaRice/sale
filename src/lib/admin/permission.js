@@ -15,9 +15,9 @@ export const ROLE_PERMISSIONS = {
     "place_order_on_behalf",
   ],
   manager: ["orders", "orders:edit"],
-  sales_support: ["enquiries", "enquiries:edit"],
+  sales_support: ["enquiries", "enquiries:edit","place_order_on_behalf","retailers"],
   discount_manager: ["discounts", "discounts:edit"],
-  field_executive: ["place_order_on_behalf"],
+  field_executive: ["place_order_on_behalf","retailers","enquiries"],
 };
 
 /**

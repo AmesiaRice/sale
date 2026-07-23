@@ -39,6 +39,12 @@ export default function DiscountsManagement() {
     [skuLines]
   );
 
+  // Sirf Brand SKUs (LP/CP) — gift item hamesha ek consumer/loose pack hota hai, lot bag nahi
+  const giftProducts = useMemo(
+    () => skuLines.find((line) => line.id === "brand")?.variants || [],
+    [skuLines]
+  );
+
   const handleFieldChange = (key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   };
@@ -90,8 +96,8 @@ export default function DiscountsManagement() {
   };
 
   return (
-    <div className="p-6 space-y-5">
-      <h1 className="text-2xl font-bold" style={{ color: "var(--color-gold-800)" }}>
+    <div className="p-4 md:p-6 space-y-5">
+      <h1 className="text-xl md:text-2xl font-bold" style={{ color: "var(--color-gold-800)" }}>
         Discounts Management
       </h1>
 
@@ -128,7 +134,7 @@ export default function DiscountsManagement() {
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="bg-white rounded-2xl border p-5 grid grid-cols-2 gap-4"
+          className="bg-white rounded-2xl border p-5 grid grid-cols-1 md:grid-cols-2 gap-4"
           style={{ borderColor: "var(--color-gold-200)" }}
         >
           {config.fields.map((field) => {
@@ -146,6 +152,29 @@ export default function DiscountsManagement() {
                   >
                     <option value="">Select a product...</option>
                     {allProducts.map((p) => (
+                      <option key={p.skuId} value={p.skuId}>
+                        {p.name} ({p.skuId})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            }
+
+            // Gift SKU ID field ko bhi dropdown bana do (Brand products se)
+            if (field.key === "Gift SKU ID") {
+              return (
+                <div key={field.key} className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-600">{field.label}</label>
+                  <select
+                    value={formData["Gift SKU ID"] || ""}
+                    onChange={(e) => handleFieldChange("Gift SKU ID", e.target.value)}
+                    className="border rounded-lg px-3 py-2 text-sm cursor-pointer"
+                    style={{ borderColor: "var(--color-gold-200)" }}
+                    required
+                  >
+                    <option value="">Select gift product...</option>
+                    {giftProducts.map((p) => (
                       <option key={p.skuId} value={p.skuId}>
                         {p.name} ({p.skuId})
                       </option>
@@ -188,7 +217,7 @@ export default function DiscountsManagement() {
           })}
           <button
             type="submit"
-            className="col-span-2 text-sm font-semibold px-4 py-2 rounded-lg text-white w-fit cursor-pointer"
+            className="col-span-1 md:col-span-2 text-sm font-semibold px-4 py-2 rounded-lg text-white w-fit cursor-pointer"
             style={{ backgroundColor: "var(--color-gold-700)" }}
           >
             Save
@@ -196,70 +225,134 @@ export default function DiscountsManagement() {
         </form>
       )}
 
-      {/* List Table */}
+      {/* List */}
       {isLoading ? (
         <p className="text-sm text-gray-400">Loading...</p>
       ) : (
-        <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: "var(--color-gold-200)" }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ backgroundColor: "var(--color-gold-50)" }}>
-                {config.columns.map((col) => (
-                  <th key={col} className="text-left px-4 py-3 font-semibold" style={{ color: "var(--color-gold-700)" }}>
-                    {col}
-                  </th>
-                ))}
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, idx) => {
-                const statusValue = getRowValue(row, config.statusKey);
-                const rowId = getRowValue(row, config.idKey);
-                const isUpdating = updatingId === rowId;
+        <>
+          {/* Mobile card list */}
+          <div className="space-y-3 md:hidden">
+            {rows.map((row, idx) => {
+              const statusValue = getRowValue(row, config.statusKey);
+              const rowId = getRowValue(row, config.idKey);
+              const isUpdating = updatingId === rowId;
+              const titleCol = config.columns.find((c) => c !== config.statusKey);
+              const detailCols = config.columns.filter(
+                (c) => c !== config.statusKey && c !== titleCol
+              );
 
-                return (
-                  <tr key={idx} className="border-t" style={{ borderColor: "var(--color-gold-100)" }}>
-                    {config.columns.map((col) => (
-                      <td key={col} className="px-4 py-3">
-                        {col === config.statusKey ? (
-                          <span
-                            className="text-xs font-semibold px-2 py-1 rounded-full"
-                            style={{
-                              backgroundColor: statusValue === "Active" ? "#D1FAE5" : "#FEE2E2",
-                              color: statusValue === "Active" ? "#065F46" : "#991B1B",
-                            }}
-                          >
-                            {statusValue || "Inactive"}
-                          </span>
-                        ) : (
-                          String(getRowValue(row, col) ?? "")
-                        )}
-                      </td>
+              return (
+                <div
+                  key={idx}
+                  className="bg-white rounded-2xl border p-4 space-y-3"
+                  style={{ borderColor: "var(--color-gold-200)" }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium truncate min-w-0">
+                      {String(getRowValue(row, titleCol) ?? "")}
+                    </p>
+                    <span
+                      className="text-xs font-semibold px-2 py-1 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: statusValue === "Active" ? "#D1FAE5" : "#FEE2E2",
+                        color: statusValue === "Active" ? "#065F46" : "#991B1B",
+                      }}
+                    >
+                      {statusValue || "Inactive"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+                    {detailCols.map((col) => (
+                      <div key={col}>
+                        <span className="text-gray-400">{col}: </span>
+                        {String(getRowValue(row, col) ?? "—")}
+                      </div>
                     ))}
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => toggleStatus(row)}
-                        disabled={isUpdating}
-                        className="text-xs font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 hover:underline"
-                        style={{ color: "var(--color-gold-600)" }}
-                      >
-                        {isUpdating ? "Updating..." : statusValue === "Active" ? "Deactivate" : "Activate"}
-                      </button>
+                  </div>
+
+                  <button
+                    onClick={() => toggleStatus(row)}
+                    disabled={isUpdating}
+                    className="text-xs font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 hover:underline"
+                    style={{ color: "var(--color-gold-600)" }}
+                  >
+                    {isUpdating ? "Updating..." : statusValue === "Active" ? "Deactivate" : "Activate"}
+                  </button>
+                </div>
+              );
+            })}
+
+            {rows.length === 0 && (
+              <p className="text-center text-sm text-gray-400 py-8">No records found.</p>
+            )}
+          </div>
+
+          {/* Desktop table */}
+          <div
+            className="hidden md:block bg-white rounded-2xl border overflow-hidden"
+            style={{ borderColor: "var(--color-gold-200)" }}
+          >
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ backgroundColor: "var(--color-gold-50)" }}>
+                  {config.columns.map((col) => (
+                    <th key={col} className="text-left px-4 py-3 font-semibold" style={{ color: "var(--color-gold-700)" }}>
+                      {col}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, idx) => {
+                  const statusValue = getRowValue(row, config.statusKey);
+                  const rowId = getRowValue(row, config.idKey);
+                  const isUpdating = updatingId === rowId;
+
+                  return (
+                    <tr key={idx} className="border-t" style={{ borderColor: "var(--color-gold-100)" }}>
+                      {config.columns.map((col) => (
+                        <td key={col} className="px-4 py-3">
+                          {col === config.statusKey ? (
+                            <span
+                              className="text-xs font-semibold px-2 py-1 rounded-full"
+                              style={{
+                                backgroundColor: statusValue === "Active" ? "#D1FAE5" : "#FEE2E2",
+                                color: statusValue === "Active" ? "#065F46" : "#991B1B",
+                              }}
+                            >
+                              {statusValue || "Inactive"}
+                            </span>
+                          ) : (
+                            String(getRowValue(row, col) ?? "")
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => toggleStatus(row)}
+                          disabled={isUpdating}
+                          className="text-xs font-semibold cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 hover:underline"
+                          style={{ color: "var(--color-gold-600)" }}
+                        >
+                          {isUpdating ? "Updating..." : statusValue === "Active" ? "Deactivate" : "Activate"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={config.columns.length + 1} className="text-center text-gray-400 py-8">
+                      No records found.
                     </td>
                   </tr>
-                );
-              })}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={config.columns.length + 1} className="text-center text-gray-400 py-8">
-                    No records found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

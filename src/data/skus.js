@@ -168,7 +168,8 @@ function groupIntroOffers(rawRows) {
     map[skuId] = {
       introId: row["INTD_ID"],
       minQty: Number(row["Minimum Order Qty"]) || 0,
-      gift: row["GIFT"] || "",
+      giftSkuId: row["Gift SKU ID"] || "",
+      giftQty: Number(row["Gift Qty"]) || 0,
       remarks: row["Remarks"] || "",
     };
   });
@@ -369,6 +370,14 @@ export async function getSkuLines() {
 
     const combined = [];
 
+    // Gift SKU ID → product name lookup, taaki "4 X <naam>" jaisa display string ban sake
+    const brandNameBySkuId = {};
+    if (brandGroup) {
+      brandGroup.variants.forEach((variant) => {
+        brandNameBySkuId[variant.skuId] = variant.name;
+      });
+    }
+
     // Brand group ko uski apni discount maps se attach karo
     if (brandGroup) {
       brandGroup.variants.forEach((variant) => {
@@ -384,7 +393,20 @@ export async function getSkuLines() {
       lotSaleGroup.variants.forEach((variant) => {
         variant.volumeTiers = lotVolumeDiscounts[variant.skuId] || [];
         variant.firoOffers = lotFiroOffers[variant.skuId] || [];
-        variant.introOffer = introOffers[variant.skuId] || null; // 👈 ADD KIYA — sirf Lot ke liye
+
+        const intro = introOffers[variant.skuId];
+        variant.introOffer = intro
+          ? {
+              ...intro,
+              // UI mein already {introOffer.gift} string ki tarah render hota hai —
+              // isliye yaha formatted string bana dete hain, display components chhedne
+              // ki zaroorat nahi
+              gift:
+                intro.giftQty && intro.giftSkuId
+                  ? `${intro.giftQty} X ${brandNameBySkuId[intro.giftSkuId] || intro.giftSkuId}`
+                  : "",
+            }
+          : null;
       });
       combined.push(lotSaleGroup);
     }

@@ -12,9 +12,9 @@ export default function EnquiriesManagement() {
     const q = search.toLowerCase();
     return enquiries.filter(
       (e) =>
-        e.name?.toLowerCase().includes(q) ||
-        e.contact?.toLowerCase().includes(q) ||
-        e.sku?.toLowerCase().includes(q)
+        String(e.name ?? "").toLowerCase().includes(q) ||
+        String(e.contact ?? "").toLowerCase().includes(q) ||
+        String(e.sku ?? "").toLowerCase().includes(q)
     );
   }, [enquiries, search]);
 
@@ -23,8 +23,8 @@ export default function EnquiriesManagement() {
   }
 
   return (
-    <div className="p-6 space-y-5">
-      <h1 className="text-2xl font-bold" style={{ color: "var(--color-gold-800)" }}>
+    <div className="p-4 md:p-6 space-y-5">
+      <h1 className="text-xl md:text-2xl font-bold" style={{ color: "var(--color-gold-800)" }}>
         Enquiries
       </h1>
 
@@ -37,7 +37,46 @@ export default function EnquiriesManagement() {
         style={{ borderColor: "var(--color-gold-200)" }}
       />
 
-      <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: "var(--color-gold-200)" }}>
+      {/* Mobile card list */}
+      <div className="space-y-3 md:hidden">
+        {filtered.map((enq) => (
+          <div
+            key={enq.rowIndex}
+            className="bg-white rounded-2xl border p-4 space-y-3"
+            style={{ borderColor: "var(--color-gold-200)" }}
+          >
+            <div className="min-w-0">
+              <p className="font-medium truncate">{enq.name}</p>
+              <p className="text-xs text-gray-500 truncate">{enq.contact}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600">
+              <div>
+                <span className="text-gray-400">SKU: </span>
+                {enq.sku || "—"}
+              </div>
+              <div>
+                <span className="text-gray-400">Retailer: </span>
+                {enq.retailerId || "—"}
+              </div>
+              <div className="col-span-2">
+                <span className="text-gray-400">Date: </span>
+                {enq.timestamp ? new Date(enq.timestamp).toLocaleString("en-IN") : "N/A"}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {filtered.length === 0 && (
+          <p className="text-center text-sm text-gray-400 py-8">No enquiries found.</p>
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div
+        className="hidden md:block bg-white rounded-2xl border overflow-hidden"
+        style={{ borderColor: "var(--color-gold-200)" }}
+      >
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: "var(--color-gold-50)" }}>

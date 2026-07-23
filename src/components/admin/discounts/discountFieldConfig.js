@@ -33,9 +33,10 @@ export const DISCOUNT_CONFIG = {
     fields: [
       { key: "SKU ID", label: "SKU ID", type: "text" },
       { key: "Minimum Order Qty", label: "Min Qty", type: "number" },
-      { key: "GIFT", label: "Gift Description", type: "text" },
+      { key: "Gift SKU ID", label: "Gift SKU ID", type: "text" },
+      { key: "Gift Qty", label: "Gift Qty", type: "number" },
       { key: "Remarks", label: "Remarks", type: "text" },
     ],
-    columns: ["SKU ID", "Minimum Order Qty", "GIFT", "Active Status"],
+    columns: ["SKU ID", "Minimum Order Qty", "Gift SKU ID", "Gift Qty", "Active Status"],
   },
 };
