@@ -1,16 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const STATUS_OPTIONS = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
-
-const STATUS_COLORS = {
-  Pending: { bg: "#FEF3C7", text: "#92400E" },
-  Processing: { bg: "#DBEAFE", text: "#1E40AF" },
-  Shipped: { bg: "#E0E7FF", text: "#4338CA" },
-  Delivered: { bg: "#D1FAE5", text: "#065F46" },
-  Cancelled: { bg: "#FEE2E2", text: "#7F1D1D" },
-};
+import { STATUS_OPTIONS, getStatusColors } from "@/lib/orderStatus";
 
 export default function OrderStatusDropdown({ orderId, currentStatus, onUpdate }) {
   const [status, setStatus] = useState(currentStatus || "Pending");
@@ -24,7 +15,7 @@ export default function OrderStatusDropdown({ orderId, currentStatus, onUpdate }
     setSaving(false);
   };
 
-  const colors = STATUS_COLORS[status] || STATUS_COLORS.Pending;
+  const colors = getStatusColors(status);
 
   return (
     <select

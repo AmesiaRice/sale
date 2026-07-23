@@ -18,12 +18,15 @@ export default function PlaceOrderProductCard({ variant, onAddToOrder, isIntroEl
   const introOffer = variant.introOffer;
   const introEligible = introOffer && isIntroEligible ? isIntroEligible(introOffer.introId) : false;
 
+  const currentStock = Number.isFinite(variant.currentStock) ? variant.currentStock : Infinity;
+
   const handleQtyChange = (delta) => {
-    setQuantity((prev) => Math.max(1, prev + delta));
+    setQuantity((prev) => Math.min(currentStock, Math.max(1, prev + delta)));
   };
 
   const handleAdd = (e) => {
     e.stopPropagation();
+    if (!variant.inStock) return;
     onAddToOrder(variant, quantity);
     setAdded(true);
     setQuantity(1);
@@ -55,6 +58,17 @@ export default function PlaceOrderProductCard({ variant, onAddToOrder, isIntroEl
             FLASH
           </div>
         </motion.div>
+      )}
+
+      {!variant.inStock && (
+        <div className="absolute top-3 right-3 z-30">
+          <div
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold text-white shadow-md"
+            style={{ backgroundColor: "#8A2A1F" }}
+          >
+            OUT OF STOCK
+          </div>
+        </div>
       )}
 
       {/* Top-left Introductory Offer badge — bilkul ProductCard.jsx jaisa */}
@@ -176,9 +190,10 @@ export default function PlaceOrderProductCard({ variant, onAddToOrder, isIntroEl
           <input
             type="number"
             min={1}
+            max={Number.isFinite(currentStock) ? currentStock : undefined}
             value={quantity}
             onClick={(e) => e.stopPropagation()}
-            onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+            onChange={(e) => setQuantity(Math.min(currentStock, Math.max(1, Number(e.target.value) || 1)))}
             className="w-11 text-center text-xs font-medium outline-none no-spinner"
             style={{ color: "#2A2118" }}
           />
@@ -187,7 +202,8 @@ export default function PlaceOrderProductCard({ variant, onAddToOrder, isIntroEl
               e.stopPropagation();
               handleQtyChange(1);
             }}
-            className="w-7 h-8 flex items-center justify-center hover:bg-[#FAF7F0] cursor-pointer transition rounded-r-lg"
+            disabled={quantity >= currentStock}
+            className="w-7 h-8 flex items-center justify-center hover:bg-[#FAF7F0] cursor-pointer transition rounded-r-lg disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus size={12} style={{ color: "#5C5343" }} />
           </button>
@@ -195,11 +211,13 @@ export default function PlaceOrderProductCard({ variant, onAddToOrder, isIntroEl
 
         <button
           onClick={handleAdd}
-          disabled={added}
-          className="flex-1 h-8 text-[11px] font-semibold tracking-wide uppercase transition-colors duration-300 flex items-center justify-center gap-1.5 rounded-lg cursor-pointer disabled:cursor-not-allowed"
+          disabled={added || !variant.inStock}
+          className="flex-1 h-8 text-[11px] font-semibold tracking-wide uppercase transition-colors duration-300 flex items-center justify-center gap-1.5 rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           style={{ backgroundColor: added ? "#4A5D3A" : "#2A2118", color: "#F5F0E6" }}
         >
-          {added ? (
+          {!variant.inStock ? (
+            "Out of Stock"
+          ) : added ? (
             <>
               <Check size={12} /> Added
             </>

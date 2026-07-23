@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { useSkuData } from "@/hooks/useSkuData";
 import { useRetailerId } from "@/hooks/useRetailerId";
 import { useIntroEligibility } from "@/hooks/useIntroEligibility";
+import { getImsSystem } from "@/lib/getImsSystem";
 
 import {
   ShoppingBag,
@@ -66,6 +67,9 @@ export default function CartPage() {
           nextTier: null,
           introOffer: null,
           introQualifies: false,
+          // Live product data abhi load nahi hui — stock restrict mat karo
+          currentStock: Infinity,
+          inStock: true,
         };
       }
 
@@ -99,6 +103,14 @@ export default function CartPage() {
         nextTier,
         introOffer,
         introQualifies,
+        // Live IMS stock (useSkuData se, cart mein add hone ke waqt wali stale
+        // value se nahi) — checkout validation aur qty cap dono isi se karte hain
+        currentStock: Number.isFinite(fullProduct.currentStock) ? fullProduct.currentStock : Infinity,
+        inStock: fullProduct.inStock !== false,
+        // Cart item (ProductCard/ProductDetailPage se) productType carry nahi karta —
+        // isliye yaha fullProduct se le rahe hain, warna getImsSystem() hamesha
+        // "brand" pe fallback ho jaata (Lot orders ka IMS deduct galat sheet mein jaata)
+        productType: fullProduct.productType,
       };
     });
   }, [cartItems, products, isIntroEligible]);
@@ -151,6 +163,18 @@ export default function CartPage() {
       return;
     }
 
+    // Stock se zyada qty ho ya SKU out of stock ho gaya ho to checkout block karo
+    const outOfStockItems = pricedItems.filter(
+      (item) => !item.inStock || item.quantity > item.currentStock
+    );
+    if (outOfStockItems.length > 0) {
+      alert(
+        "In products ki available stock se zyada quantity hai, checkout se pehle qty kam karein:\n" +
+          outOfStockItems.map((item) => `${item.name} (available: ${item.inStock ? item.currentStock : 0})`).join("\n")
+      );
+      return;
+    }
+
     const orderId = `ORD-${retailerId}-${Date.now()}`;
     setLoading(true);
 
@@ -174,6 +198,12 @@ export default function CartPage() {
         orderTotalItems: totalItemsCount,
         // 👇 Sirf tab bheja jayega jab retailer eligible ho AUR minQty cross ho
         INTD_ID: item.introQualifies ? item.introOffer.introId : "",
+        // 👇 IMS deduct-stock call ke liye — kaunsi IMS (Brand/Lot) se stock katega
+        imsSystem: getImsSystem(item),
+        // 👇 Intro offer ki gift (hamesha Brand SKU) — order line ka hissa nahi hai,
+        // isliye alag se bhejte hain taaki uska stock bhi deduct ho sake
+        giftSkuId: item.introQualifies ? item.introOffer.giftSkuId : "",
+        giftQty: item.introQualifies ? item.introOffer.giftQty : 0,
         createdAt: new Date().toISOString(),
       }));
 
@@ -354,9 +384,13 @@ export default function CartPage() {
                         <div className="mt-3 flex items-center gap-2 flex-wrap">
                           <span
                             className="px-3 py-1 rounded-full text-xs font-medium"
-                            style={{ backgroundColor: "#f0fdf4", color: "#166534" }}
+                            style={
+                              item.inStock
+                                ? { backgroundColor: "#f0fdf4", color: "#166534" }
+                                : { backgroundColor: "#fef2f2", color: "#b91c1c" }
+                            }
                           >
-                            In Stock
+                            {item.inStock ? "In Stock" : "Out of Stock"}
                           </span>
 
                           {item.volumeDiscount > 0 && (
@@ -416,11 +450,14 @@ export default function CartPage() {
                           <input
                             type="number"
                             min={1}
+                            max={Number.isFinite(item.currentStock) ? item.currentStock : undefined}
                             value={item.quantity}
                             onChange={(e) => updateQuantity(item.id, e.target.value)}
                             onBlur={(e) => {
                               if (!e.target.value || Number(e.target.value) < 1) {
                                 updateQuantity(item.id, 1);
+                              } else if (Number(e.target.value) > item.currentStock) {
+                                updateQuantity(item.id, item.currentStock);
                               }
                             }}
                             className="w-16 text-center font-semibold outline-none no-spinner"
@@ -428,7 +465,8 @@ export default function CartPage() {
 
                           <button
                             onClick={() => increaseQty(item.id)}
-                            className="w-11 h-11 flex items-center justify-center hover:bg-gray-50 transition shrink-0"
+                            disabled={item.quantity >= item.currentStock}
+                            className="w-11 h-11 flex items-center justify-center hover:bg-gray-50 transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <Plus size={16} />
                           </button>

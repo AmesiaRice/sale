@@ -91,9 +91,12 @@ export default function ProductDetailPage({ productId }) {
       ? Number(variant.dealerPricePerKg).toFixed(2)
       : null;
 
-  const handleQtyChange = (delta) => setQuantity((prev) => Math.max(1, prev + delta));
+  const currentStock = Number.isFinite(variant.currentStock) ? variant.currentStock : Infinity;
+
+  const handleQtyChange = (delta) => setQuantity((prev) => Math.min(currentStock, Math.max(1, prev + delta)));
 
   const handleAdd = () => {
+    if (!variant.inStock) return;
     addToCart({
       id: variant.id,
       name: variant.name,
@@ -114,6 +117,7 @@ export default function ProductDetailPage({ productId }) {
       primaryUse: variant.primaryUse,
       description: variant.description,
       image: variant.image || "",
+      productType: variant.productType,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -286,14 +290,16 @@ export default function ProductDetailPage({ productId }) {
               <input
                 type="number"
                 min={1}
+                max={Number.isFinite(currentStock) ? currentStock : undefined}
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+                onChange={(e) => setQuantity(Math.min(currentStock, Math.max(1, Number(e.target.value) || 1)))}
                 className="w-14 text-center text-sm font-medium outline-none no-spinner"
                 style={{ color: "#2A2118" }}
               />
               <button
                 onClick={() => handleQtyChange(1)}
-                className="w-9 h-10 flex items-center justify-center hover:bg-[#FAF7F0] transition"
+                disabled={quantity >= currentStock}
+                className="w-9 h-10 flex items-center justify-center hover:bg-[#FAF7F0] transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Plus size={13} style={{ color: "#5C5343" }} />
               </button>
@@ -334,10 +340,11 @@ export default function ProductDetailPage({ productId }) {
 
             <button
               onClick={handleAdd}
-              className="h-11 px-8 text-xs font-semibold tracking-wide uppercase transition-all duration-300 flex items-center gap-1.5"
+              disabled={!variant.inStock}
+              className="h-11 px-8 text-xs font-semibold tracking-wide uppercase transition-all duration-300 flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
               style={{ backgroundColor: added ? "#4A5D3A" : "#2A2118", color: "#F5F0E6" }}
             >
-              {added ? (<><Check size={13} /> Added to Cart</>) : "Add to Cart"}
+              {!variant.inStock ? "Out of Stock" : added ? (<><Check size={13} /> Added to Cart</>) : "Add to Cart"}
             </button>
           </div>
         </div>

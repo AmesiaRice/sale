@@ -6,6 +6,7 @@ import { useSkuData } from "@/hooks/useSkuData";
 import { calculateBestPrice, isLiveFiroOffer } from "@/data/skus";
 import { useAdminSession } from "@/hooks/admin/useAdminSession";
 import { useIntroEligibility } from "@/hooks/useIntroEligibility";
+import { getImsSystem } from "@/lib/getImsSystem";
 import RetailerSearchSelect from "./RetailerSearchSelect";
 import PlaceOrderProductCard from "./PlaceOrderProductCard";
 import CategoryTabs from "@/components/products/CategoryTabs";
@@ -44,7 +45,11 @@ export default function PlaceOrderOnBehalf() {
 
   const updateQty = (id, qty) => {
     setCartItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity: Math.max(1, qty) } : item))
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const maxQty = Number.isFinite(item.currentStock) ? item.currentStock : Infinity;
+        return { ...item, quantity: Math.min(maxQty, Math.max(1, qty)) };
+      })
     );
   };
 
@@ -78,6 +83,19 @@ export default function PlaceOrderOnBehalf() {
       return;
     }
 
+    const outOfStockItems = pricedItems.filter(
+      (item) => item.inStock === false || item.quantity > (item.currentStock ?? Infinity)
+    );
+    if (outOfStockItems.length > 0) {
+      alert(
+        "In products ki available stock se zyada quantity hai, order se pehle qty kam karein:\n" +
+          outOfStockItems
+            .map((item) => `${item.name} (available: ${item.inStock === false ? 0 : item.currentStock})`)
+            .join("\n")
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -100,6 +118,9 @@ export default function PlaceOrderOnBehalf() {
         orderTotal: grandTotal,
         orderTotalItems: totalItems,
         INTD_ID: item.introQualifies ? item.introOffer.introId : "",
+        imsSystem: getImsSystem(item),
+        giftSkuId: item.introQualifies ? item.introOffer.giftSkuId : "",
+        giftQty: item.introQualifies ? item.introOffer.giftQty : 0,
         PlacedBy: admin?.name || admin?.adminId || "Field Executive",
         createdAt: new Date().toISOString(),
       }));
@@ -235,6 +256,7 @@ export default function PlaceOrderOnBehalf() {
                     <input
                       type="number"
                       min={1}
+                      max={Number.isFinite(item.currentStock) ? item.currentStock : undefined}
                       value={item.quantity}
                       onChange={(e) => updateQty(item.id, Number(e.target.value) || 1)}
                       className="w-16 text-center text-sm font-semibold border rounded-md py-1 no-spinner"

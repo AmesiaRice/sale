@@ -15,9 +15,11 @@ const LOT_API_URL =
   const LOT_FIRO_DISCOUNT_API_URL =
   "https://script.google.com/macros/s/AKfycbx1umqO_4WiPxTTVv3OXcxSLUZFqo6d8MubR2Um_tTuJS8tP_LvHQzxYPw9rCPknvSLkA/exec";
 
-const INTRO_OFFER_API_URL = 
+const INTRO_OFFER_API_URL =
    "https://script.google.com/macros/s/AKfycbzPn7WxZZqzTNzibGw4CB5D3LrzO1wvDMRvoIwKFk0qFcqYxhmwBsyiAk1ZNzS6XwFN5A/exec";
 
+export const IMS_BRAND_API_URL = "https://script.google.com/macros/s/AKfycbx3-gxX_TlrmD9iUyeeMYDjFd80aCj8O89CnxoQ44RgnOLyw8-rbHLaRXNjANZcxSzv/exec";
+export const IMS_LOT_API_URL = "https://script.google.com/macros/s/AKfycbzDPAN2qlAHgv53aS394eJE35yQrJxB_a2ZJzY0wJp62MzheKPqJxTS43qD4dWNV902Sw/exec";
   export const skuLines = []; // fallback
 
 // ================= Helpers =================
@@ -169,7 +171,7 @@ function groupIntroOffers(rawRows) {
       introId: row["INTD_ID"],
       minQty: Number(row["Minimum Order Qty"]) || 0,
       giftSkuId: row["Gift SKU ID"] || "",
-      giftQty: Number(row["Gift Qty"]) || 0,
+      giftQty: Number(row["GIFT"]) || 0,
       remarks: row["Remarks"] || "",
     };
   });
@@ -258,6 +260,49 @@ async function fetchFiroOffers(apiUrl) {
     console.error("Failed to fetch FIRO offers:", error);
     return {};
   }
+}
+
+// ================= IMS Stock Helpers =================
+
+const OUT_OF_STOCK_STATUSES = ["Out of Stock", "Discontinued"];
+
+function groupImsStock(rawRows) {
+  const map = {};
+  rawRows.forEach((row) => {
+    const skuId = row["SKU ID"];
+    if (!skuId) return;
+    map[skuId] = {
+      currentStock: Number(row["Current Stock"]) || 0,
+      status: row["Status"] || "",
+    };
+  });
+  return map;
+}
+
+async function fetchImsStock(apiUrl) {
+  if (!apiUrl) return {};
+  try {
+    const res = await fetch(apiUrl, { method: "GET", next: { revalidate: 10 } });
+    if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+    const rawData = await res.json();
+    if (!Array.isArray(rawData)) return {};
+    return groupImsStock(rawData);
+  } catch (error) {
+    console.error("Failed to fetch IMS stock:", error);
+    return {};
+  }
+}
+
+/**
+ * IMS se real stock mile to variant.inStock/currentStock ko usse override
+ * karta hai. IMS abhi deploy nahi hui (ya SKU IMS mein nahi mila) to variant
+ * jaisa hai waisa hi reh jaata hai — koi breaking change nahi.
+ */
+function applyImsStock(variant, imsStockMap) {
+  const stock = imsStockMap[variant.skuId];
+  if (!stock) return;
+  variant.currentStock = stock.currentStock;
+  variant.inStock = stock.currentStock > 0 && !OUT_OF_STOCK_STATUSES.includes(stock.status);
 }
 
 /**
@@ -358,6 +403,8 @@ export async function getSkuLines() {
       lotVolumeDiscounts,
       lotFiroOffers,
       introOffers,
+      brandImsStock,
+      lotImsStock,
     ] = await Promise.all([
       fetchBrandData(),
       fetchLotSaleData(),
@@ -366,6 +413,8 @@ export async function getSkuLines() {
       fetchVolumeDiscounts(LOT_VOLUME_DISCOUNT_API_URL),
       fetchFiroOffers(LOT_FIRO_DISCOUNT_API_URL),
       fetchIntroOffers(),
+      fetchImsStock(IMS_BRAND_API_URL),
+      fetchImsStock(IMS_LOT_API_URL),
     ]);
 
     const combined = [];
@@ -384,6 +433,7 @@ export async function getSkuLines() {
         variant.volumeTiers = brandVolumeDiscounts[variant.skuId] || [];
         variant.firoOffers = brandFiroOffers[variant.skuId] || [];
         variant.introOffer = null; // 👈 ADD KIYA — Brand ke liye abhi intro offer nahi hai
+        applyImsStock(variant, brandImsStock);
       });
       combined.push(brandGroup);
     }
@@ -407,6 +457,7 @@ export async function getSkuLines() {
                   : "",
             }
           : null;
+        applyImsStock(variant, lotImsStock);
       });
       combined.push(lotSaleGroup);
     }

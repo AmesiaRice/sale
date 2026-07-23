@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronDown, PackageCheck, Tag, Sparkles } from "lucide-react";
+import { ChevronDown, PackageCheck, Tag, Sparkles, Ban } from "lucide-react";
+import { getStatusColors } from "@/lib/orderStatus";
 
 export default function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false);
@@ -36,16 +37,31 @@ export default function OrderCard({ order }) {
   // Short ID for the avatar (last few digits, more readable than full string)
   const shortIdSuffix = order.orderId ? order.orderId.slice(-4) : "····";
 
+  const status = order.status || "Pending";
+  const statusColors = getStatusColors(status);
+  const isCancelled = status === "Cancelled";
+
   return (
     <motion.div
       whileHover={{ y: -2 }}
       transition={{ duration: 0.2 }}
       className="bg-white rounded-2xl overflow-hidden"
       style={{
-        border: "1px solid var(--color-gold-200)",
+        border: isCancelled ? "1px solid #FCA5A5" : "1px solid var(--color-gold-200)",
         boxShadow: "0 1px 3px rgba(42,33,24,0.04), 0 6px 18px rgba(42,33,24,0.05)",
       }}
     >
+      {/* Cancelled banner — sabse pehle dikhna chahiye, retailer ko turant pata chale */}
+      {isCancelled && (
+        <div
+          className="px-5 py-2.5 flex items-center gap-2 text-white"
+          style={{ backgroundColor: "#B91C1C" }}
+        >
+          <Ban size={14} className="shrink-0" />
+          <p className="text-xs font-bold">Ye order cancel kar diya gaya hai.</p>
+        </div>
+      )}
+
       {/* Header — hamesha visible, click karne par expand/collapse */}
       <button
         onClick={() => setExpanded((prev) => !prev)}
@@ -69,6 +85,12 @@ export default function OrderCard({ order }) {
             >
               #{shortIdSuffix}
             </p>
+            <span
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: statusColors.bg, color: statusColors.text }}
+            >
+              {status}
+            </span>
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
               style={{ backgroundColor: "var(--color-gold-100)", color: "var(--color-gold-700)" }}

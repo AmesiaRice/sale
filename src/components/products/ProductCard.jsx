@@ -53,12 +53,15 @@ export default function ProductCard({ variant }) {
     },
   };
 
+  const currentStock = Number.isFinite(variant.currentStock) ? variant.currentStock : Infinity;
+
   const handleQtyChange = (delta) => {
-    setQuantity((prev) => Math.max(1, prev + delta));
+    setQuantity((prev) => Math.min(currentStock, Math.max(1, prev + delta)));
   };
 
   const handleAdd = (e) => {
     e.stopPropagation();
+    if (!variant.inStock) return;
     addToCart({
       id: variant.id,
       name: variant.name,
@@ -79,6 +82,7 @@ export default function ProductCard({ variant }) {
       primaryUse: variant.primaryUse,
       description: variant.description,
       image: variant.image || "",
+      productType: variant.productType,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
@@ -106,8 +110,20 @@ export default function ProductCard({ variant }) {
           transition: "border 0.3s ease, box-shadow 0.3s ease",
         }}
       >
+        {/* Out of Stock overlay badge — sabse high priority */}
+        {!variant.inStock && (
+          <div className="absolute top-3 right-3 z-30">
+            <div
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold text-white shadow-md"
+              style={{ backgroundColor: "#8A2A1F" }}
+            >
+              OUT OF STOCK
+            </div>
+          </div>
+        )}
+
         {/* Top-right animated badge — flash ko priority */}
-        {hasFiro && (
+        {variant.inStock && hasFiro && (
           <motion.div
             className="absolute top-3 right-3 z-20"
             animate={{ scale: [1, 1.1, 1] }}
@@ -122,7 +138,7 @@ export default function ProductCard({ variant }) {
             </div>
           </motion.div>
         )}
-        {!hasFiro && hasVolume && (
+        {variant.inStock && !hasFiro && hasVolume && (
           <div className="absolute top-3 right-3 z-20">
             <div
               className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold text-white shadow-md"
@@ -299,9 +315,10 @@ export default function ProductCard({ variant }) {
             <input
               type="number"
               min={1}
+              max={Number.isFinite(currentStock) ? currentStock : undefined}
               value={quantity}
               onClick={(e) => e.stopPropagation()}
-              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+              onChange={(e) => setQuantity(Math.min(currentStock, Math.max(1, Number(e.target.value) || 1)))}
               className="w-9 text-center text-xs font-medium outline-none no-spinner"
               style={{ color: "#2A2118" }}
             />
@@ -310,7 +327,8 @@ export default function ProductCard({ variant }) {
                 e.stopPropagation();
                 handleQtyChange(1);
               }}
-              className="w-7 h-8 flex items-center justify-center hover:bg-[#FAF7F0] transition rounded-r-lg"
+              disabled={quantity >= currentStock}
+              className="w-7 h-8 flex items-center justify-center hover:bg-[#FAF7F0] transition rounded-r-lg disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus size={12} style={{ color: "#5C5343" }} />
             </button>
@@ -318,13 +336,16 @@ export default function ProductCard({ variant }) {
           <motion.button
             onClick={handleAdd}
             whileTap={{ scale: 0.96 }}
-            className="flex-1 h-8 text-[11px] font-semibold tracking-wide uppercase transition-colors duration-300 flex items-center justify-center gap-1.5 rounded-lg"
+            disabled={!variant.inStock}
+            className="flex-1 h-8 text-[11px] font-semibold tracking-wide uppercase transition-colors duration-300 flex items-center justify-center gap-1.5 rounded-lg disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               backgroundColor: added ? "#4A5D3A" : "#2A2118",
               color: "#F5F0E6",
             }}
           >
-            {added ? (
+            {!variant.inStock ? (
+              "Out of Stock"
+            ) : added ? (
               <motion.span
                 key="added"
                 initial={{ opacity: 0, y: 6 }}

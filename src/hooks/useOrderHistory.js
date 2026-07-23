@@ -25,6 +25,9 @@ import useSWR from "swr";
      () => fetchOrderHistory({ retailerId, orderId }),
      {
          revalidateOnFocus: false,
+         // Order status (jaise Cancelled) admin se update ho sakta hai — retailer
+         // ko bina manual refresh kiye pata chalna chahiye
+         refreshInterval: 30000,
      }
    )
    return {
