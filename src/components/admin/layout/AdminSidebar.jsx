@@ -11,6 +11,7 @@ import {
   Tag,
   Mail,
   PackagePlus,
+  Truck,
   LogOut,
   Grid2X2,
   X,
@@ -24,6 +25,7 @@ const allLinks = [
   { label: "Discounts", href: "/admin/discounts", icon: Tag, permission: "discounts" },
   { label: "Enquiries", href: "/admin/enquiries", icon: Mail, permission: "enquiries" },
   { label: "Place Order", href: "/admin/place-order", icon: PackagePlus, permission: "place_order_on_behalf" },
+  { label: "Dispatch", href: "/admin/dispatch", icon: Truck, permission: "dispatch" },
 ];
 
 // Mobile bottom bar me sirf itne hi tabs directly dikhenge, baki "More" me
@@ -56,7 +58,7 @@ export default function AdminSidebar() {
     <>
       {/* Desktop Sidebar */}
       <aside
-        className="hidden md:flex w-60 shrink-0 flex-col p-4 h-screen sticky top-0"
+        className="hidden md:flex w-60 shrink-0 flex-col p-4 h-screen sticky top-0 print:hidden"
         style={{ backgroundColor: "var(--color-gold-900)" }}
       >
         <div className="mb-8 px-2">
@@ -188,7 +190,7 @@ export default function AdminSidebar() {
 
       {/* Mobile Bottom Nav Bar */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t pb-[env(safe-area-inset-bottom)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t pb-[env(safe-area-inset-bottom)] print:hidden"
         style={{
           backgroundColor: "var(--color-gold-900)",
           borderColor: "var(--color-gold-800)",
